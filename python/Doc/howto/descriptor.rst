@@ -96,9 +96,9 @@ For objects, the machinery is in :meth:`object.__getattribute__` which
 transforms ``b.x`` into ``type(b).__dict__['x'].__get__(b, type(b))``.  The
 implementation works through a precedence chain that gives data descriptors
 priority over instance variables, instance variables priority over non-data
-descriptors, and assigns lowest priority to :meth:`__getattr__` if provided.
-The full C implementation can be found in :c:func:`PyObject_GenericGetAttr()` in
-:source:`Objects/object.c`.
+descriptors, and assigns lowest priority to :meth:`__getattr__` if provided.  The
+full C implementation can be found in :c:func:`PyObject_GenericGetAttr()` in
+`Objects/object.c <http://svn.python.org/view/python/trunk/Objects/object.c?view=markup>`_\.
 
 For classes, the machinery is in :meth:`type.__getattribute__` which transforms
 ``B.x`` into ``B.__dict__['x'].__get__(None, B)``.  In pure Python, it looks
@@ -108,7 +108,7 @@ like::
         "Emulate type_getattro() in Objects/typeobject.c"
         v = object.__getattribute__(self, key)
         if hasattr(v, '__get__'):
-            return v.__get__(None, self)
+           return v.__get__(None, self)
         return v
 
 The important points to remember are:
@@ -124,16 +124,18 @@ The important points to remember are:
 The object returned by ``super()`` also has a custom :meth:`__getattribute__`
 method for invoking descriptors.  The call ``super(B, obj).m()`` searches
 ``obj.__class__.__mro__`` for the base class ``A`` immediately following ``B``
-and then returns ``A.__dict__['m'].__get__(obj, B)``.  If not a descriptor,
+and then returns ``A.__dict__['m'].__get__(obj, A)``.  If not a descriptor,
 ``m`` is returned unchanged.  If not in the dictionary, ``m`` reverts to a
 search using :meth:`object.__getattribute__`.
 
 Note, in Python 2.2, ``super(B, obj).m()`` would only invoke :meth:`__get__` if
 ``m`` was a data descriptor.  In Python 2.3, non-data descriptors also get
 invoked unless an old-style class is involved.  The implementation details are
-in :c:func:`super_getattro()` in :source:`Objects/typeobject.c`.
+in :c:func:`super_getattro()` in
+`Objects/typeobject.c <http://svn.python.org/view/python/trunk/Objects/typeobject.c?view=markup>`_
+and a pure Python equivalent can be found in `Guido's Tutorial`_.
 
-.. _`Guido's Tutorial`: https://www.python.org/download/releases/2.2.3/descrintro/#cooperation
+.. _`Guido's Tutorial`: http://www.python.org/2.2.3/descrintro.html#cooperation
 
 The details above show that the mechanism for descriptors is embedded in the
 :meth:`__getattribute__()` methods for :class:`object`, :class:`type`, and
@@ -161,17 +163,17 @@ descriptor is useful for monitoring just a few chosen attributes::
             self.name = name
 
         def __get__(self, obj, objtype):
-            print 'Retrieving', self.name
+            print('Retrieving', self.name)
             return self.val
 
         def __set__(self, obj, val):
-            print 'Updating', self.name
+            print('Updating', self.name)
             self.val = val
 
     >>> class MyClass(object):
-    ...     x = RevealAccess(10, 'var "x"')
-    ...     y = 5
-    ...
+        x = RevealAccess(10, 'var "x"')
+        y = 5
+
     >>> m = MyClass()
     >>> m.x
     Retrieving var "x"
@@ -216,8 +218,6 @@ here is a pure Python equivalent::
             self.fget = fget
             self.fset = fset
             self.fdel = fdel
-            if doc is None and fget is not None:
-                doc = fget.__doc__
             self.__doc__ = doc
 
         def __get__(self, obj, objtype=None):
@@ -237,15 +237,6 @@ here is a pure Python equivalent::
                 raise AttributeError("can't delete attribute")
             self.fdel(obj)
 
-        def getter(self, fget):
-            return type(self)(fget, self.fset, self.fdel, self.__doc__)
-
-        def setter(self, fset):
-            return type(self)(self.fget, fset, self.fdel, self.__doc__)
-
-        def deleter(self, fdel):
-            return type(self)(self.fget, self.fset, fdel, self.__doc__)
-
 The :func:`property` builtin helps whenever a user interface has granted
 attribute access and then subsequent changes require the intervention of a
 method.
@@ -258,10 +249,10 @@ to wrap access to the value attribute in a property data descriptor::
 
     class Cell(object):
         . . .
-        def getvalue(self):
-            "Recalculate the cell before returning value"
+        def getvalue(self, obj):
+            "Recalculate cell before returning value"
             self.recalc()
-            return self._value
+            return obj._value
         value = property(getvalue)
 
 
@@ -293,22 +284,23 @@ this::
 Running the interpreter shows how the function descriptor works in practice::
 
     >>> class D(object):
-    ...     def f(self, x):
-    ...         return x
-    ...
+         def f(self, x):
+              return x
+
     >>> d = D()
-    >>> D.__dict__['f']  # Stored internally as a function
+    >>> D.__dict__['f'] # Stored internally as a function
     <function f at 0x00C45070>
-    >>> D.f              # Get from a class becomes an unbound method
+    >>> D.f             # Get from a class becomes an unbound method
     <unbound method D.f>
-    >>> d.f              # Get from an instance becomes a bound method
+    >>> d.f             # Get from an instance becomes a bound method
     <bound method D.f of <__main__.D object at 0x00B18C90>>
 
 The output suggests that bound and unbound methods are two different types.
 While they could have been implemented that way, the actual C implementation of
-:c:type:`PyMethod_Type` in :source:`Objects/classobject.c` is a single object
-with two different representations depending on whether the :attr:`im_self`
-field is set or is *NULL* (the C equivalent of ``None``).
+:c:type:`PyMethod_Type` in
+`Objects/classobject.c <http://svn.python.org/view/python/trunk/Objects/classobject.c?view=markup>`_
+is a single object with two different representations depending on whether the
+:attr:`im_self` field is set or is *NULL* (the C equivalent of *None*).
 
 Likewise, the effects of calling a method object depend on the :attr:`im_self`
 field. If set (meaning bound), the original function (stored in the
@@ -325,7 +317,7 @@ Non-data descriptors provide a simple mechanism for variations on the usual
 patterns of binding functions into methods.
 
 To recap, functions have a :meth:`__get__` method so that they can be converted
-to a method when accessed as attributes.  The non-data descriptor transforms an
+to a method when accessed as attributes.  The non-data descriptor transforms a
 ``obj.f(*args)`` call into ``f(obj, *args)``.  Calling ``klass.f(*args)``
 becomes ``f(*args)``.
 
@@ -364,39 +356,39 @@ Since staticmethods return the underlying function with no changes, the example
 calls are unexciting::
 
     >>> class E(object):
-    ...     def f(x):
-    ...         print x
-    ...     f = staticmethod(f)
-    ...
-    >>> print E.f(3)
+         def f(x):
+              print(x)
+         f = staticmethod(f)
+
+    >>> print(E.f(3))
     3
-    >>> print E().f(3)
+    >>> print(E().f(3))
     3
 
 Using the non-data descriptor protocol, a pure Python version of
 :func:`staticmethod` would look like this::
 
     class StaticMethod(object):
-        "Emulate PyStaticMethod_Type() in Objects/funcobject.c"
+     "Emulate PyStaticMethod_Type() in Objects/funcobject.c"
 
-        def __init__(self, f):
-            self.f = f
+     def __init__(self, f):
+          self.f = f
 
-        def __get__(self, obj, objtype=None):
-            return self.f
+     def __get__(self, obj, objtype=None):
+          return self.f
 
 Unlike static methods, class methods prepend the class reference to the
 argument list before calling the function.  This format is the same
 for whether the caller is an object or a class::
 
     >>> class E(object):
-    ...     def f(klass, x):
-    ...          return klass.__name__, x
-    ...     f = classmethod(f)
-    ...
-    >>> print E.f(3)
+         def f(klass, x):
+              return klass.__name__, x
+         f = classmethod(f)
+
+    >>> print(E.f(3))
     ('E', 3)
-    >>> print E().f(3)
+    >>> print(E().f(3))
     ('E', 3)
 
 
@@ -406,7 +398,7 @@ is to create alternate class constructors.  In Python 2.3, the classmethod
 :func:`dict.fromkeys` creates a new dictionary from a list of keys.  The pure
 Python equivalent is::
 
-    class Dict(object):
+    class Dict:
         . . .
         def fromkeys(klass, iterable, value=None):
             "Emulate dict_fromkeys() in Objects/dictobject.c"
@@ -425,15 +417,15 @@ Using the non-data descriptor protocol, a pure Python version of
 :func:`classmethod` would look like this::
 
     class ClassMethod(object):
-        "Emulate PyClassMethod_Type() in Objects/funcobject.c"
+         "Emulate PyClassMethod_Type() in Objects/funcobject.c"
 
-        def __init__(self, f):
-            self.f = f
+         def __init__(self, f):
+              self.f = f
 
-        def __get__(self, obj, klass=None):
-            if klass is None:
-                klass = type(obj)
-            def newfunc(*args):
-                return self.f(klass, *args)
-            return newfunc
+         def __get__(self, obj, klass=None):
+              if klass is None:
+                   klass = type(obj)
+              def newfunc(*args):
+                   return self.f(klass, *args)
+              return newfunc
 

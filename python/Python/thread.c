@@ -23,12 +23,6 @@
 
 #include <stdlib.h>
 
-#ifdef __sgi
-#ifndef HAVE_PTHREAD_H /* XXX Need to check in configure.ac */
-#undef _POSIX_THREADS
-#endif
-#endif
-
 #include "pythread.h"
 
 #ifndef _POSIX_THREADS
@@ -50,7 +44,7 @@
    threads.
 
    This is valid for HP-UX 11.23 running on an ia64 system. If needed, add
-   a check of __ia64 to verify that we're running on an ia64 system instead
+   a check of __ia64 to verify that we're running on a ia64 system instead
    of a pa-risc system.
 */
 #ifdef __hpux
@@ -101,6 +95,7 @@ PyThread_init_thread(void)
 static size_t _pythread_stacksize = 0;
 
 #ifdef SGI_THREADS
+#error SGI Irix threads are now unsupported, and code will be removed in 3.3.
 #include "thread_sgi.h"
 #endif
 
@@ -109,10 +104,12 @@ static size_t _pythread_stacksize = 0;
 #endif
 
 #ifdef SUN_LWP
+#error SunOS lightweight processes are now unsupported, and code will be removed in 3.3.
 #include "thread_lwp.h"
 #endif
 
 #ifdef HAVE_PTH
+#error GNU pth threads are now unsupported, and code will be removed in 3.3.
 #include "thread_pth.h"
 #undef _POSIX_THREADS
 #endif
@@ -122,6 +119,7 @@ static size_t _pythread_stacksize = 0;
 #endif
 
 #ifdef C_THREADS
+#error Mach C Threads are now unsupported, and code will be removed in 3.3.
 #include "thread_cthread.h"
 #endif
 
@@ -133,16 +131,8 @@ static size_t _pythread_stacksize = 0;
 #include "thread_os2.h"
 #endif
 
-#ifdef BEOS_THREADS
-#include "thread_beos.h"
-#endif
-
 #ifdef PLAN9_THREADS
 #include "thread_plan9.h"
-#endif
-
-#ifdef ATHEOS_THREADS
-#include "thread_atheos.h"
 #endif
 
 /*
@@ -271,7 +261,7 @@ find_key(int key, void *value)
         if (p->id == id && p->key == key)
             goto Done;
         /* Sanity check.  These states should never happen but if
-         * they do we must abort.  Otherwise we'll end up spinning
+         * they do we must abort.  Otherwise we'll end up spinning in
          * in a tight loop with the lock held.  A similar check is done
          * in pystate.c tstate_delete_common().  */
         if (p == prev_p)

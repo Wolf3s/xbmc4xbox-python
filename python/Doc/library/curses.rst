@@ -2,14 +2,11 @@
 ===============================================================
 
 .. module:: curses
-   :synopsis: An interface to the curses library, providing portable terminal
-              handling.
+   :synopsis: An interface to the curses library, providing portable
+              terminal handling.
    :platform: Unix
 .. sectionauthor:: Moshe Zadka <moshez@zadka.site.co.il>
 .. sectionauthor:: Eric Raymond <esr@thyrsus.com>
-
-.. versionchanged:: 1.6
-   Added support for the ``ncurses`` library and converted to a package.
 
 The :mod:`curses` module provides an interface to the curses library, the
 de-facto standard for portable advanced terminal handling.
@@ -48,7 +45,7 @@ Linux and the BSD variants of Unix.
       Tutorial material on using curses with Python, by Andrew Kuchling and Eric
       Raymond.
 
-   The :source:`Demo/curses/` directory in the Python source distribution contains
+   The :source:`Tools/demo/` directory in the Python source distribution contains
    some example programs using the curses bindings provided by this module.
 
 
@@ -316,7 +313,7 @@ The module :mod:`curses` defines the following functions:
    Return the name of the key numbered *k*.  The name of a key generating printable
    ASCII character is the key's character.  The name of a control-key combination
    is a two-character string consisting of a caret followed by the corresponding
-   printable ASCII character.  The name of an alt-key combination (128--255) is a
+   printable ASCII character.  The name of an alt-key combination (128-255) is a
    string consisting of the prefix 'M-' followed by the name of the corresponding
    ASCII character.
 
@@ -380,7 +377,7 @@ The module :mod:`curses` defines the following functions:
    is to be displayed.
 
 
-.. function:: newwin(nlines, ncols)
+.. function:: newwin(begin_y, begin_x)
               newwin(nlines, ncols, begin_y, begin_x)
 
    Return a new window, whose left-upper corner is at  ``(begin_y, begin_x)``, and
@@ -566,11 +563,11 @@ The module :mod:`curses` defines the following functions:
    capability, or is canceled or absent from the terminal description.
 
 
-.. function:: tparm(str[,...])
+.. function:: tparm(str[, ...])
 
    Instantiate the string *str* with the supplied parameters, where *str* should
    be a parameterized string obtained from the terminfo database.  E.g.
-   ``tparm(tigetstr("cup"), 5, 3)`` could result in ``'\033[6;4H'``, the exact
+   ``tparm(tigetstr("cup"), 5, 3)`` could result in ``b'\033[6;4H'``, the exact
    result depending on terminal type.
 
 
@@ -663,12 +660,6 @@ the following methods:
    character previously painter at that location.  By default, the character
    position and attributes are the current settings for the window object.
 
-   .. note::
-
-      Writing outside the window, subwindow, or pad raises a :exc:`curses.error`.
-      Attempting to write to the lower right corner of a window, subwindow,
-      or pad will cause an exception to be raised after the character is printed.
-
 
 .. method:: window.addnstr(str, n[, attr])
             window.addnstr(y, x, str, n[, attr])
@@ -682,12 +673,6 @@ the following methods:
 
    Paint the string *str* at ``(y, x)`` with attributes *attr*, overwriting
    anything previously on the display.
-
-   .. note::
-
-      Writing outside the window, subwindow, or pad raises :exc:`curses.error`.
-      Attempting to write to the lower right corner of a window, subwindow,
-      or pad will cause an exception to be raised after the string is printed.
 
 
 .. method:: window.attroff(attr)
@@ -777,11 +762,11 @@ the following methods:
             window.chgat(y, x, num, attr)
 
    Set the attributes of *num* characters at the current cursor position, or at
-   position ``(y, x)`` if supplied. If *num* is not given or is ``-1``,
-   the attribute will be set on all the characters to the end of the line.  This
-   function moves cursor to position ``(y, x)`` if supplied. The changed line
-   will be touched using the :meth:`touchline` method so that the contents will
-   be redisplayed by the next window refresh.
+   position ``(y, x)`` if supplied. If no value of *num* is given or *num* = -1,
+   the attribute will  be set on all the characters to the end of the line.  This
+   function does not move the cursor. The changed line will be touched using the
+   :meth:`touchline` method so that the contents will be redisplayed by the next
+   window refresh.
 
 
 .. method:: window.clear()
@@ -1246,63 +1231,27 @@ The :mod:`curses` module defines the following data members:
    A string representing the current version of the module.  Also available as
    :const:`__version__`.
 
-Some constants are available to specify character cell attributes.
-The exact constants available are system dependent.
+Several constants are available to specify character cell attributes:
 
 +------------------+-------------------------------+
 | Attribute        | Meaning                       |
 +==================+===============================+
-| ``A_ALTCHARSET`` | Alternate character set mode  |
+| ``A_ALTCHARSET`` | Alternate character set mode. |
 +------------------+-------------------------------+
-| ``A_BLINK``      | Blink mode                    |
+| ``A_BLINK``      | Blink mode.                   |
 +------------------+-------------------------------+
-| ``A_BOLD``       | Bold mode                     |
+| ``A_BOLD``       | Bold mode.                    |
 +------------------+-------------------------------+
-| ``A_DIM``        | Dim mode                      |
+| ``A_DIM``        | Dim mode.                     |
 +------------------+-------------------------------+
-| ``A_INVIS``      | Invisible or blank mode       |
-+------------------+-------------------------------+
-| ``A_NORMAL``     | Normal attribute              |
-+------------------+-------------------------------+
-| ``A_PROTECT``    | Protected mode                |
+| ``A_NORMAL``     | Normal attribute.             |
 +------------------+-------------------------------+
 | ``A_REVERSE``    | Reverse background and        |
-|                  | foreground colors             |
+|                  | foreground colors.            |
 +------------------+-------------------------------+
-| ``A_STANDOUT``   | Standout mode                 |
+| ``A_STANDOUT``   | Standout mode.                |
 +------------------+-------------------------------+
-| ``A_UNDERLINE``  | Underline mode                |
-+------------------+-------------------------------+
-| ``A_HORIZONTAL`` | Horizontal highlight          |
-+------------------+-------------------------------+
-| ``A_LEFT``       | Left highlight                |
-+------------------+-------------------------------+
-| ``A_LOW``        | Low highlight                 |
-+------------------+-------------------------------+
-| ``A_RIGHT``      | Right highlight               |
-+------------------+-------------------------------+
-| ``A_TOP``        | Top highlight                 |
-+------------------+-------------------------------+
-| ``A_VERTICAL``   | Vertical highlight            |
-+------------------+-------------------------------+
-| ``A_CHARTEXT``   | Bit-mask to extract a         |
-|                  | character                     |
-+------------------+-------------------------------+
-
-Several constants are available to extract corresponding attributes returned
-by some methods.
-
-+------------------+-------------------------------+
-| Bit-mask         | Meaning                       |
-+==================+===============================+
-| ``A_ATTRIBUTES`` | Bit-mask to extract           |
-|                  | attributes                    |
-+------------------+-------------------------------+
-| ``A_CHARTEXT``   | Bit-mask to extract a         |
-|                  | character                     |
-+------------------+-------------------------------+
-| ``A_COLOR``      | Bit-mask to extract           |
-|                  | color-pair field information  |
+| ``A_UNDERLINE``  | Underline mode.               |
 +------------------+-------------------------------+
 
 Keys are referred to by integer constants with names starting with  ``KEY_``.
@@ -1454,7 +1403,7 @@ The exact keycaps available are system dependent.
 +-------------------+--------------------------------------------+
 | ``KEY_SEOL``      | Shifted Clear line                         |
 +-------------------+--------------------------------------------+
-| ``KEY_SEXIT``     | Shifted Exit                               |
+| ``KEY_SEXIT``     | Shifted Dxit                               |
 +-------------------+--------------------------------------------+
 | ``KEY_SFIND``     | Shifted Find                               |
 +-------------------+--------------------------------------------+
@@ -1522,9 +1471,9 @@ keys); also, the following keypad mappings are standard:
 +------------------+-----------+
 | :kbd:`End`       | KEY_END   |
 +------------------+-----------+
-| :kbd:`Page Up`   | KEY_PPAGE |
+| :kbd:`Page Up`   | KEY_NPAGE |
 +------------------+-----------+
-| :kbd:`Page Down` | KEY_NPAGE |
+| :kbd:`Page Down` | KEY_PPAGE |
 +------------------+-----------+
 
 The following table lists characters from the alternate character set. These are
@@ -1658,8 +1607,6 @@ The following table lists the predefined colors:
 .. sectionauthor:: Eric Raymond <esr@thyrsus.com>
 
 
-.. versionadded:: 1.6
-
 The :mod:`curses.textpad` module provides a :class:`Textbox` class that handles
 elementary text editing in a curses window, supporting a set of keybindings
 resembling those of Emacs (thus, also of Netscape Navigator, BBedit 6.x,
@@ -1785,4 +1732,3 @@ You can instantiate a :class:`Textbox` object as follows:
       cursor motion that would land the cursor on a trailing blank goes to the
       end of that line instead, and trailing blanks are stripped when the window
       contents are gathered.
-

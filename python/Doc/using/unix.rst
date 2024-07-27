@@ -26,11 +26,11 @@ following links:
 
 .. seealso::
 
-   https://www.debian.org/doc/manuals/maint-guide/first.en.html
+   http://www.debian.org/doc/manuals/maint-guide/first.en.html
       for Debian users
-   https://en.opensuse.org/Portal:Packaging
+   http://linuxmafia.com/pub/linux/suse-linux-internals/chapter35.html
       for OpenSuse users
-   https://docs.fedoraproject.org/en-US/Fedora_Draft_Documentation/0.1/html/RPM_Guide/ch-creating-rpms.html
+   http://docs.fedoraproject.org/en-US/Fedora_Draft_Documentation/0.1/html/RPM_Guide/ch-creating-rpms.html
       for Fedora users
    http://www.slackbook.org/html/package-management-making-packages.html
       for Slackware users
@@ -41,11 +41,9 @@ On FreeBSD and OpenBSD
 
 * FreeBSD users, to add the package use::
 
-     pkg install python3
-
-* OpenBSD users, to add the package use::
-
      pkg_add -r python
+
+* OpenBSD users use::
 
      pkg_add ftp://ftp.openbsd.org/pub/OpenBSD/4.2/packages/<insert your architecture here>/python-<version>.tgz
 
@@ -57,19 +55,18 @@ On FreeBSD and OpenBSD
 On OpenSolaris
 --------------
 
-You can get Python from `OpenCSW <https://www.opencsw.org/>`_.  Various versions
-of Python are available and can be installed with e.g. ``pkgutil -i python27``.
+To install the newest Python versions on OpenSolaris, install `blastwave
+<http://www.blastwave.org/howto.html>`_ and type ``pkg_get -i python`` at the
+prompt.
 
-
-.. _building-python-on-unix:
 
 Building Python
 ===============
 
 If you want to compile CPython yourself, first thing you should do is get the
-`source <https://www.python.org/downloads/source/>`_. You can download either the
+`source <http://python.org/download/source/>`_. You can download either the
 latest release's source or just grab a fresh `clone
-<https://docs.python.org/devguide/setup.html#getting-the-source-code>`_.  (If you want
+<http://docs.python.org/devguide/setup#getting-the-source-code>`_.  (If you want
 to contribute patches, you will need a clone.)
 
 The build process consists in the usual ::
@@ -84,7 +81,7 @@ source tree.
 
 .. warning::
 
-   ``make install`` can overwrite or masquerade the :file:`python` binary.
+   ``make install`` can overwrite or masquerade the :file:`python3` binary.
    ``make altinstall`` is therefore recommended instead of ``make install``
    since it only installs :file:`{exec_prefix}/bin/python{version}`.
 
@@ -102,7 +99,7 @@ For example, on most Linux systems, the default for both is :file:`/usr`.
 +-----------------------------------------------+------------------------------------------+
 | File/directory                                | Meaning                                  |
 +===============================================+==========================================+
-| :file:`{exec_prefix}/bin/python`              | Recommended location of the interpreter. |
+| :file:`{exec_prefix}/bin/python3`             | Recommended location of the interpreter. |
 +-----------------------------------------------+------------------------------------------+
 | :file:`{prefix}/lib/python{version}`,         | Recommended locations of the directories |
 | :file:`{exec_prefix}/lib/python{version}`     | containing the standard modules.         |
@@ -111,10 +108,6 @@ For example, on most Linux systems, the default for both is :file:`/usr`.
 | :file:`{exec_prefix}/include/python{version}` | containing the include files needed for  |
 |                                               | developing Python extensions and         |
 |                                               | embedding the interpreter.               |
-+-----------------------------------------------+------------------------------------------+
-| :file:`~/.pythonrc.py`                        | User-specific initialization file loaded |
-|                                               | by the user module; not used by default  |
-|                                               | or by most applications.                 |
 +-----------------------------------------------+------------------------------------------+
 
 
@@ -129,21 +122,27 @@ e.g. with ::
 and put an appropriate Shebang line at the top of the script.  A good choice is
 usually ::
 
-   #!/usr/bin/env python
+   #!/usr/bin/env python3
 
 which searches for the Python interpreter in the whole :envvar:`PATH`.  However,
 some Unices may not have the :program:`env` command, so you may need to hardcode
-``/usr/bin/python`` as the interpreter path.
+``/usr/bin/python3`` as the interpreter path.
 
 To use shell commands in your Python scripts, look at the :mod:`subprocess` module.
 
 
-Editors and IDEs
-================
+Editors
+=======
 
-There are a number of IDEs that support Python programming language.
-Many editors and IDEs provide syntax highlighting, debugging tools, and :pep:`8` checks.
+Vim and Emacs are excellent editors which support Python very well.  For more
+information on how to code in Python in these editors, look at:
 
-Please go to `Python Editors <https://wiki.python.org/moin/PythonEditors>`_ and
-`Integrated Development Environments <https://wiki.python.org/moin/IntegratedDevelopmentEnvironments>`_
-for a comprehensive list.
+* http://www.vim.org/scripts/script.php?script_id=790
+* http://sourceforge.net/projects/python-mode
+
+Geany is an excellent IDE with support for a lot of languages. For more
+information, read: http://www.geany.org/
+
+Komodo edit is another extremely good IDE.  It also has support for a lot of
+languages. For more information, read:
+http://www.activestate.com/store/productdetail.aspx?prdGuid=20f4ed15-6684-4118-a78b-d37ff4058c5f

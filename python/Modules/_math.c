@@ -22,6 +22,7 @@
 static const double ln2 = 6.93147180559945286227E-01;
 static const double two_pow_m28 = 3.7252902984619141E-09; /* 2**-28 */
 static const double two_pow_p28 = 268435456.0; /* 2**28 */
+static const double zero = 0.0;
 
 /* acosh(x)
  * Method :
@@ -142,7 +143,7 @@ _Py_atanh(double x)
 #ifdef Py_NAN
         return Py_NAN;
 #else
-        return x/0.0;
+        return x/zero;
 #endif
     }
     if (absx < two_pow_m28) {           /* |x| < 2**-28 */

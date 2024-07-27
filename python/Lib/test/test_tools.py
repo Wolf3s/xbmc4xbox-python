@@ -5,16 +5,15 @@ Tools directory of a Python checkout or tarball, such as reindent.py.
 """
 
 import os
-import runpy
 import sys
+import imp
 import unittest
 import shutil
-from cStringIO import StringIO
 import subprocess
 import sysconfig
 import tempfile
 import textwrap
-from test import test_support
+from test import support
 from test.script_helper import assert_python_ok, temp_dir
 
 if not sysconfig.is_python_build():
@@ -47,11 +46,11 @@ class PindentTests(unittest.TestCase):
             self.assertEqual(f1.readlines(), f2.readlines())
 
     def pindent(self, source, *args):
-        proc = subprocess.Popen(
+        with subprocess.Popen(
                 (sys.executable, self.script) + args,
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                universal_newlines=True)
-        out, err = proc.communicate(source)
+                universal_newlines=True) as proc:
+            out, err = proc.communicate(source)
         self.assertIsNone(err)
         return out
 
@@ -361,120 +360,73 @@ class PindentTests(unittest.TestCase):
         self.pindent_test(clean, closed)
 
 
-class FixcidTests(unittest.TestCase):
-    def test_parse_strings(self):
-        old1 = 'int xx = "xx\\"xx"[xx];\n'
-        old2 = "int xx = 'x\\'xx' + xx;\n"
-        output = self.run_script(old1 + old2)
-        new1 = 'int yy = "xx\\"xx"[yy];\n'
-        new2 = "int yy = 'x\\'xx' + yy;\n"
-        self.assertMultiLineEqual(output,
-            "1\n"
-            "< {old1}"
-            "> {new1}"
-            "{new1}"
-            "2\n"
-            "< {old2}"
-            "> {new2}"
-            "{new2}".format(old1=old1, old2=old2, new1=new1, new2=new2)
-        )
+class TestSundryScripts(unittest.TestCase):
+    # At least make sure the rest don't have syntax errors.  When tests are
+    # added for a script it should be added to the whitelist below.
 
-    def test_alter_comments(self):
-        output = self.run_script(
-            substfile=
-                "xx yy\n"
-                "*aa bb\n",
-            args=("-c", "-",),
-            input=
-                "/* xx altered */\n"
-                "int xx;\n"
-                "/* aa unaltered */\n"
-                "int aa;\n",
-        )
-        self.assertMultiLineEqual(output,
-            "1\n"
-            "< /* xx altered */\n"
-            "> /* yy altered */\n"
-            "/* yy altered */\n"
-            "2\n"
-            "< int xx;\n"
-            "> int yy;\n"
-            "int yy;\n"
-            "/* aa unaltered */\n"
-            "4\n"
-            "< int aa;\n"
-            "> int bb;\n"
-            "int bb;\n"
-        )
+    # scripts that have independent tests.
+    whitelist = ['reindent.py']
+    # scripts that can't be imported without running
+    blacklist = ['make_ctype.py']
+    # scripts that use windows-only modules
+    windows_only = ['win_add2path.py']
+    # blacklisted for other reasons
+    other = ['analyze_dxp.py']
 
-    def test_directory(self):
-        os.mkdir(test_support.TESTFN)
-        self.addCleanup(test_support.rmtree, test_support.TESTFN)
-        c_filename = os.path.join(test_support.TESTFN, "file.c")
-        with open(c_filename, "w") as file:
-            file.write("int xx;\n")
-        with open(os.path.join(test_support.TESTFN, "file.py"), "w") as file:
-            file.write("xx = 'unaltered'\n")
-        script = os.path.join(scriptsdir, "fixcid.py")
-        # ignore dbg() messages
-        with test_support.captured_stderr() as stderr:
-            output = self.run_script(args=(test_support.TESTFN,))
-        self.assertMultiLineEqual(output,
-            "{}:\n"
-            "1\n"
-            '< int xx;\n'
-            '> int yy;\n'.format(c_filename),
-            "stderr: %s" % stderr.getvalue()
-        )
+    skiplist = blacklist + whitelist + windows_only + other
 
-    def run_script(self, input="", args=("-",), substfile="xx yy\n"):
-        substfilename = test_support.TESTFN + ".subst"
-        with open(substfilename, "w") as file:
-            file.write(substfile)
-        self.addCleanup(test_support.unlink, substfilename)
+    def setUp(self):
+        cm = support.DirsOnSysPath(scriptsdir)
+        cm.__enter__()
+        self.addCleanup(cm.__exit__)
 
-        argv = ["fixcid.py", "-s", substfilename] + list(args)
-        script = os.path.join(scriptsdir, "fixcid.py")
-        with test_support.swap_attr(sys, "argv", argv), \
-                test_support.swap_attr(sys, "stdin", StringIO(input)), \
-                test_support.captured_stdout() as output:
-            try:
-                runpy.run_path(script, run_name="__main__")
-            except SystemExit as exit:
-                self.assertEqual(exit.code, 0)
-        return output.getvalue()
+    def test_sundry(self):
+        for fn in os.listdir(scriptsdir):
+            if fn.endswith('.py') and fn not in self.skiplist:
+                __import__(fn[:-3])
+
+    @unittest.skipIf(sys.platform != "win32", "Windows-only test")
+    def test_sundry_windows(self):
+        for fn in self.windows_only:
+            __import__(fn[:-3])
+
+    @unittest.skipIf(not support.threading, "test requires _thread module")
+    def test_analyze_dxp_import(self):
+        if hasattr(sys, 'getdxp'):
+            import analyze_dxp
+        else:
+            with self.assertRaises(RuntimeError):
+                import analyze_dxp
 
 
-class LllTests(unittest.TestCase):
+class PdepsTests(unittest.TestCase):
 
-    script = os.path.join(scriptsdir, 'lll.py')
+    @classmethod
+    def setUpClass(self):
+        path = os.path.join(scriptsdir, 'pdeps.py')
+        self.pdeps = imp.load_source('pdeps', path)
 
-    @unittest.skipUnless(hasattr(os, 'symlink'), 'Requires symlink support')
-    def test_lll_multiple_dirs(self):
-        dir1 = tempfile.mkdtemp()
-        dir2 = tempfile.mkdtemp()
-        self.addCleanup(test_support.rmtree, dir1)
-        self.addCleanup(test_support.rmtree, dir2)
-        fn1 = os.path.join(dir1, 'foo1')
-        fn2 = os.path.join(dir2, 'foo2')
-        for fn, dir in (fn1, dir1), (fn2, dir2):
-            open(fn, 'w').close()
-            os.symlink(fn, os.path.join(dir, 'symlink'))
+    @classmethod
+    def tearDownClass(self):
+        if 'pdeps' in sys.modules:
+            del sys.modules['pdeps']
 
-        rc, out, err = assert_python_ok(self.script, dir1, dir2)
-        self.assertEqual(out,
-            '{dir1}:\n'
-            'symlink -> {fn1}\n'
-            '\n'
-            '{dir2}:\n'
-            'symlink -> {fn2}\n'
-            .format(dir1=dir1, fn1=fn1, dir2=dir2, fn2=fn2)
-        )
+    def test_process_errors(self):
+        # Issue #14492: m_import.match(line) can be None.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fn = os.path.join(tmpdir, 'foo')
+            with open(fn, 'w') as stream:
+                stream.write("#!/this/will/fail")
+            self.pdeps.process(fn, {})
+
+    def test_inverse_attribute_error(self):
+        # Issue #14492: this used to fail with an AttributeError.
+        self.pdeps.inverse({'a': []})
 
 
 def test_main():
-    test_support.run_unittest(*[obj for obj in globals().values()
-                                    if isinstance(obj, type)])
+    support.run_unittest(*[obj for obj in globals().values()
+                               if isinstance(obj, type)])
 
 
 if __name__ == '__main__':

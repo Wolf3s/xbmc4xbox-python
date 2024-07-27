@@ -23,21 +23,6 @@
 #endif
 
 /*
- * Wrapper for PyErr_CheckSignals() which can be called without the GIL
- */
-
-static int
-check_signals(void)
-{
-    PyGILState_STATE state;
-    int res;
-    state = PyGILState_Ensure();
-    res = PyErr_CheckSignals();
-    PyGILState_Release(state);
-    return res;
-}
-
-/*
  * Send string to file descriptor
  */
 
@@ -49,14 +34,8 @@ _conn_sendall(HANDLE h, char *string, size_t length)
 
     while (length > 0) {
         res = WRITE(h, p, length);
-        if (res < 0) {
-            if (errno == EINTR) {
-                if (check_signals() < 0)
-                    return MP_EXCEPTION_HAS_BEEN_SET;
-                continue;
-            }
+        if (res < 0)
             return MP_SOCKET_ERROR;
-        }
         length -= res;
         p += res;
     }
@@ -77,16 +56,12 @@ _conn_recvall(HANDLE h, char *buffer, size_t length)
 
     while (remaining > 0) {
         temp = READ(h, p, remaining);
-        if (temp < 0) {
-            if (errno == EINTR) {
-                if (check_signals() < 0)
-                    return MP_EXCEPTION_HAS_BEEN_SET;
-                continue;
-            }
-            return temp;
-        }
-        else if (temp == 0) {
-            return remaining == length ? MP_END_OF_FILE : MP_EARLY_END_OF_FILE;
+        if (temp <= 0) {
+            if (temp == 0)
+                return remaining == length ?
+                    MP_END_OF_FILE : MP_EARLY_END_OF_FILE;
+            else
+                return temp;
         }
         remaining -= temp;
         p += temp;
@@ -196,16 +171,9 @@ conn_poll(ConnectionObject *conn, double timeout, PyThreadState *_save)
     p.revents = 0;
 
     if (timeout < 0) {
-        do {
-            res = poll(&p, 1, -1);
-        } while (res < 0 && errno == EINTR);
+        res = poll(&p, 1, -1);
     } else {
         res = poll(&p, 1, (int)(timeout * 1000 + 0.5));
-        if (res < 0 && errno == EINTR) {
-            /* We were interrupted by a signal.  Just indicate a
-               timeout even though we are early. */
-            return FALSE;
-        }
     }
 
     if (res < 0) {
@@ -241,19 +209,12 @@ conn_poll(ConnectionObject *conn, double timeout, PyThreadState *_save)
     FD_SET((SOCKET)conn->handle, &rfds);
 
     if (timeout < 0.0) {
-        do {
-            res = select((int)conn->handle+1, &rfds, NULL, NULL, NULL);
-        } while (res < 0 && errno == EINTR);
+        res = select((int)conn->handle+1, &rfds, NULL, NULL, NULL);
     } else {
         struct timeval tv;
         tv.tv_sec = (long)timeout;
         tv.tv_usec = (long)((timeout - tv.tv_sec) * 1e6 + 0.5);
         res = select((int)conn->handle+1, &rfds, NULL, NULL, &tv);
-        if (res < 0 && errno == EINTR) {
-            /* We were interrupted by a signal.  Just indicate a
-               timeout even though we are early. */
-            return FALSE;
-        }
     }
 
     if (res < 0) {

@@ -1,8 +1,8 @@
 .. _tut-brieftourtwo:
 
-**********************************************
-Brief Tour of the Standard Library --- Part II
-**********************************************
+*********************************************
+Brief Tour of the Standard Library -- Part II
+*********************************************
 
 This second tour covers more advanced modules that support professional
 programming needs.  These modules rarely occur in small scripts.
@@ -13,11 +13,11 @@ programming needs.  These modules rarely occur in small scripts.
 Output Formatting
 =================
 
-The :mod:`repr` module provides a version of :func:`repr` customized for
+The :mod:`reprlib` module provides a version of :func:`repr` customized for
 abbreviated displays of large or deeply nested containers::
 
-   >>> import repr
-   >>> repr.repr(set('supercalifragilisticexpialidocious'))
+   >>> import reprlib
+   >>> reprlib.repr(set('supercalifragilisticexpialidocious'))
    "set(['a', 'c', 'd', 'e', 'f', 'g', ...])"
 
 The :mod:`pprint` module offers more sophisticated control over printing both
@@ -44,7 +44,7 @@ width::
    ... a list of strings instead of one big string with newlines to separate
    ... the wrapped lines."""
    ...
-   >>> print textwrap.fill(doc, width=40)
+   >>> print(textwrap.fill(doc, width=40))
    The wrap() method is just like fill()
    except that it returns a list of strings
    instead of one big string with newlines
@@ -71,9 +71,9 @@ formatting numbers with group separators::
 Templating
 ==========
 
-The :mod:`string` module includes a versatile :class:`~string.Template` class
-with a simplified syntax suitable for editing by end-users.  This allows users
-to customize their applications without having to alter the application.
+The :mod:`string` module includes a versatile :class:`Template` class with a
+simplified syntax suitable for editing by end-users.  This allows users to
+customize their applications without having to alter the application.
 
 The format uses placeholder names formed by ``$`` with valid Python identifiers
 (alphanumeric characters and underscores).  Surrounding the placeholder with
@@ -85,11 +85,11 @@ spaces.  Writing ``$$`` creates a single escaped ``$``::
    >>> t.substitute(village='Nottingham', cause='the ditch fund')
    'Nottinghamfolk send $10 to the ditch fund.'
 
-The :meth:`~string.Template.substitute` method raises a :exc:`KeyError` when a
-placeholder is not supplied in a dictionary or a keyword argument.  For
-mail-merge style applications, user supplied data may be incomplete and the
-:meth:`~string.Template.safe_substitute` method may be more appropriate ---
-it will leave placeholders unchanged if data is missing::
+The :meth:`substitute` method raises a :exc:`KeyError` when a placeholder is not
+supplied in a dictionary or a keyword argument. For mail-merge style
+applications, user supplied data may be incomplete and the
+:meth:`safe_substitute` method may be more appropriate --- it will leave
+placeholders unchanged if data is missing::
 
    >>> t = Template('Return the $item to $owner.')
    >>> d = dict(item='unladen swallow')
@@ -108,7 +108,7 @@ placeholders such as the current date, image sequence number, or file format::
    >>> photofiles = ['img_1074.jpg', 'img_1076.jpg', 'img_1077.jpg']
    >>> class BatchRename(Template):
    ...     delimiter = '%'
-   >>> fmt = raw_input('Enter rename style (%d-date %n-seqnum %f-format):  ')
+   >>> fmt = input('Enter rename style (%d-date %n-seqnum %f-format):  ')
    Enter rename style (%d-date %n-seqnum %f-format):  Ashley_%n%f
 
    >>> t = BatchRename(fmt)
@@ -116,7 +116,7 @@ placeholders such as the current date, image sequence number, or file format::
    >>> for i, filename in enumerate(photofiles):
    ...     base, ext = os.path.splitext(filename)
    ...     newname = t.substitute(d=date, n=i, f=ext)
-   ...     print '{0} --> {1}'.format(filename, newname)
+   ...     print('{0} --> {1}'.format(filename, newname))
 
    img_1074.jpg --> Ashley_0.jpg
    img_1076.jpg --> Ashley_1.jpg
@@ -132,9 +132,8 @@ templates for XML files, plain text reports, and HTML web reports.
 Working with Binary Data Record Layouts
 =======================================
 
-The :mod:`struct` module provides :func:`~struct.pack` and
-:func:`~struct.unpack` functions for working with variable length binary
-record formats.  The following example shows
+The :mod:`struct` module provides :func:`pack` and :func:`unpack` functions for
+working with variable length binary record formats.  The following example shows
 how to loop through header information in a ZIP file without using the
 :mod:`zipfile` module.  Pack codes ``"H"`` and ``"I"`` represent two and four
 byte unsigned numbers respectively.  The ``"<"`` indicates that they are
@@ -153,7 +152,7 @@ standard size and in little-endian byte order::
        filename = data[start:start+filenamesize]
        start += filenamesize
        extra = data[start:start+extra_size]
-       print filename, hex(crc32), comp_size, uncomp_size
+       print(filename, hex(crc32), comp_size, uncomp_size)
 
        start += extra_size + comp_size     # skip to the next header
 
@@ -178,19 +177,18 @@ tasks in background while the main program continues to run::
            threading.Thread.__init__(self)
            self.infile = infile
            self.outfile = outfile
-
        def run(self):
            f = zipfile.ZipFile(self.outfile, 'w', zipfile.ZIP_DEFLATED)
            f.write(self.infile)
            f.close()
-           print 'Finished background zip of: ', self.infile
+           print('Finished background zip of:', self.infile)
 
    background = AsyncZip('mydata.txt', 'myarchive.zip')
    background.start()
-   print 'The main program continues to run in foreground.'
+   print('The main program continues to run in foreground.')
 
    background.join()    # Wait for the background task to finish
-   print 'Main program waited until background was done.'
+   print('Main program waited until background was done.')
 
 The principal challenge of multi-threaded applications is coordinating threads
 that share data or other resources.  To that end, the threading module provides
@@ -200,9 +198,9 @@ variables, and semaphores.
 While those tools are powerful, minor design errors can result in problems that
 are difficult to reproduce.  So, the preferred approach to task coordination is
 to concentrate all access to a resource in a single thread and then use the
-:mod:`Queue` module to feed that thread with requests from other threads.
-Applications using :class:`Queue.Queue` objects for inter-thread communication
-and coordination are easier to design, more readable, and more reliable.
+:mod:`queue` module to feed that thread with requests from other threads.
+Applications using :class:`Queue` objects for inter-thread communication and
+coordination are easier to design, more readable, and more reliable.
 
 
 .. _tut-logging:
@@ -231,9 +229,8 @@ This produces the following output:
 By default, informational and debugging messages are suppressed and the output
 is sent to standard error.  Other output options include routing messages
 through email, datagrams, sockets, or to an HTTP Server.  New filters can select
-different routing based on message priority: :const:`~logging.DEBUG`,
-:const:`~logging.INFO`, :const:`~logging.WARNING`, :const:`~logging.ERROR`,
-and :const:`~logging.CRITICAL`.
+different routing based on message priority: :const:`DEBUG`, :const:`INFO`,
+:const:`WARNING`, :const:`ERROR`, and :const:`CRITICAL`.
 
 The logging system can be configured directly from Python or can be loaded from
 a user editable configuration file for customized logging without altering the
@@ -276,7 +273,7 @@ applications include caching objects that are expensive to create::
    Traceback (most recent call last):
      File "<stdin>", line 1, in <module>
        d['primary']                # entry was automatically removed
-     File "C:/python26/lib/weakref.py", line 46, in __getitem__
+     File "C:/python31/lib/weakref.py", line 46, in __getitem__
        o = self.data[key]()
    KeyError: 'primary'
 
@@ -290,11 +287,11 @@ Many data structure needs can be met with the built-in list type. However,
 sometimes there is a need for alternative implementations with different
 performance trade-offs.
 
-The :mod:`array` module provides an :class:`~array.array()` object that is like
-a list that stores only homogeneous data and stores it more compactly.  The
-following example shows an array of numbers stored as two byte unsigned binary
-numbers (typecode ``"H"``) rather than the usual 16 bytes per entry for regular
-lists of Python int objects::
+The :mod:`array` module provides an :class:`array()` object that is like a list
+that stores only homogeneous data and stores it more compactly.  The following
+example shows an array of numbers stored as two byte unsigned binary numbers
+(typecode ``"H"``) rather than the usual 16 bytes per entry for regular lists of
+Python int objects::
 
    >>> from array import array
    >>> a = array('H', [4000, 10, 700, 22222])
@@ -303,15 +300,15 @@ lists of Python int objects::
    >>> a[1:3]
    array('H', [10, 700])
 
-The :mod:`collections` module provides a :class:`~collections.deque()` object
-that is like a list with faster appends and pops from the left side but slower
-lookups in the middle. These objects are well suited for implementing queues
-and breadth first tree searches::
+The :mod:`collections` module provides a :class:`deque()` object that is like a
+list with faster appends and pops from the left side but slower lookups in the
+middle. These objects are well suited for implementing queues and breadth first
+tree searches::
 
    >>> from collections import deque
    >>> d = deque(["task1", "task2", "task3"])
    >>> d.append("task4")
-   >>> print "Handling", d.popleft()
+   >>> print("Handling", d.popleft())
    Handling task1
 
 ::
@@ -352,8 +349,8 @@ not want to run a full list sort::
 Decimal Floating Point Arithmetic
 =================================
 
-The :mod:`decimal` module offers a :class:`~decimal.Decimal` datatype for
-decimal floating point arithmetic.  Compared to the built-in :class:`float`
+The :mod:`decimal` module offers a :class:`Decimal` datatype for decimal
+floating point arithmetic.  Compared to the built-in :class:`float`
 implementation of binary floating point, the class is especially helpful for
 
 * financial applications and other uses which require exact decimal
@@ -369,23 +366,18 @@ results in decimal floating point and binary floating point. The difference
 becomes significant if the results are rounded to the nearest cent::
 
    >>> from decimal import *
-   >>> x = Decimal('0.70') * Decimal('1.05')
-   >>> x
-   Decimal('0.7350')
-   >>> x.quantize(Decimal('0.01'))  # round to nearest cent
+   >>> round(Decimal('0.70') * Decimal('1.05'), 2)
    Decimal('0.74')
-   >>> round(.70 * 1.05, 2)         # same calculation with floats
+   >>> round(.70 * 1.05, 2)
    0.73
 
-The :class:`~decimal.Decimal` result keeps a trailing zero, automatically
-inferring four place significance from multiplicands with two place
-significance.  Decimal reproduces mathematics as done by hand and avoids
-issues that can arise when binary floating point cannot exactly represent
-decimal quantities.
+The :class:`Decimal` result keeps a trailing zero, automatically inferring four
+place significance from multiplicands with two place significance.  Decimal
+reproduces mathematics as done by hand and avoids issues that can arise when
+binary floating point cannot exactly represent decimal quantities.
 
-Exact representation enables the :class:`~decimal.Decimal` class to perform
-modulo calculations and equality tests that are unsuitable for binary floating
-point::
+Exact representation enables the :class:`Decimal` class to perform modulo
+calculations and equality tests that are unsuitable for binary floating point::
 
    >>> Decimal('1.00') % Decimal('.10')
    Decimal('0.00')

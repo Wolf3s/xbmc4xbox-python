@@ -52,12 +52,7 @@ extern PyObject *_PyIncrementalNewlineDecoder_decode(
    which can be safely put aside until another search.
    
    NOTE: for performance reasons, `end` must point to a NUL character ('\0'). 
-   Otherwise, the function will scan further and return garbage.
-
-   There are three modes, in order of priority:
-   * translated: Only find \n (assume newlines already translated)
-   * universal: Use universal newlines algorithm
-   * Otherwise, the line ending is specified by readnl, a str object */
+   Otherwise, the function will scan further and return garbage. */
 extern Py_ssize_t _PyIO_find_line_ending(
     int translated, int universal, PyObject *readnl,
     Py_UNICODE *start, Py_UNICODE *end, Py_ssize_t *consumed);
@@ -71,12 +66,7 @@ extern int _PyIO_trap_eintr(void);
 #define DEFAULT_BUFFER_SIZE (8 * 1024)  /* bytes */
 
 typedef struct {
-    /* This is the equivalent of PyException_HEAD in 3.x */
-    PyObject_HEAD
-    PyObject *dict;
-    PyObject *args;
-    PyObject *message;
-
+    PyException_HEAD
     PyObject *myerrno;
     PyObject *strerror;
     PyObject *filename; /* Not used, but part of the IOError object */
@@ -142,9 +132,20 @@ extern Py_off_t PyNumber_AsOff_t(PyObject *item, PyObject *err);
 
 /* Implementation details */
 
-extern PyObject *_PyIO_os_module;
-extern PyObject *_PyIO_locale_module;
-extern PyObject *_PyIO_unsupported_operation;
+/* IO module structure */
+
+extern PyModuleDef _PyIO_Module;
+
+typedef struct {
+    int initialized;
+    PyObject *os_module;
+    PyObject *locale_module;
+
+    PyObject *unsupported_operation;
+} _PyIO_State;
+
+#define IO_MOD_STATE(mod) ((_PyIO_State *)PyModule_GetState(mod))
+#define IO_STATE IO_MOD_STATE(PyState_FindModule(&_PyIO_Module))
 
 extern PyObject *_PyIO_str_close;
 extern PyObject *_PyIO_str_closed;
@@ -173,3 +174,5 @@ extern PyObject *_PyIO_str_write;
 extern PyObject *_PyIO_empty_str;
 extern PyObject *_PyIO_empty_bytes;
 extern PyObject *_PyIO_zero;
+
+extern PyTypeObject _PyBytesIOBuffer_Type;

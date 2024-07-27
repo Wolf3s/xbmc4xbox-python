@@ -7,8 +7,6 @@
 .. sectionauthor:: Georg Brandl
 .. much of the content adapted from docstrings
 
-.. versionadded:: 2.6
-
 **Source code:** :source:`Lib/abc.py`
 
 --------------
@@ -19,10 +17,10 @@ was added to Python. (See also :pep:`3141` and the :mod:`numbers` module
 regarding a type hierarchy for numbers based on ABCs.)
 
 The :mod:`collections` module has some concrete classes that derive from
-ABCs; these can, of course, be further derived. In addition, the
+ABCs; these can, of course, be further derived. In addition the
 :mod:`collections` module has some ABCs that can be used to test whether
-a class or instance provides a particular interface, for example, if it is
-hashable or if it is a mapping.
+a class or instance provides a particular interface, for example, is it
+hashable or a mapping.
 
 
 This module provides the following class:
@@ -49,8 +47,8 @@ This module provides the following class:
 
         from abc import ABCMeta
 
-        class MyABC:
-            __metaclass__ = ABCMeta
+        class MyABC(metaclass=ABCMeta):
+            pass
 
         MyABC.register(tuple)
 
@@ -81,7 +79,7 @@ This module provides the following class:
 
    For a demonstration of these concepts, look at this example ABC definition::
 
-      class Foo(object):
+      class Foo:
           def __getitem__(self, index):
               ...
           def __len__(self):
@@ -89,8 +87,7 @@ This module provides the following class:
           def get_iterator(self):
               return iter(self)
 
-      class MyIterable:
-          __metaclass__ = ABCMeta
+      class MyIterable(metaclass=ABCMeta):
 
           @abstractmethod
           def __iter__(self):
@@ -110,26 +107,26 @@ This module provides the following class:
       MyIterable.register(Foo)
 
    The ABC ``MyIterable`` defines the standard iterable method,
-   :meth:`~iterator.__iter__`, as an abstract method.  The implementation given
-   here can still be called from subclasses.  The :meth:`get_iterator` method
-   is also part of the ``MyIterable`` abstract base class, but it does not have
-   to be overridden in non-abstract derived classes.
+   :meth:`__iter__`, as an abstract method.  The implementation given here can
+   still be called from subclasses.  The :meth:`get_iterator` method is also
+   part of the ``MyIterable`` abstract base class, but it does not have to be
+   overridden in non-abstract derived classes.
 
    The :meth:`__subclasshook__` class method defined here says that any class
-   that has an :meth:`~iterator.__iter__` method in its
-   :attr:`~object.__dict__` (or in that of one of its base classes, accessed
-   via the :attr:`~class.__mro__` list) is considered a ``MyIterable`` too.
+   that has an :meth:`__iter__` method in its :attr:`__dict__` (or in that of
+   one of its base classes, accessed via the :attr:`__mro__` list) is
+   considered a ``MyIterable`` too.
 
    Finally, the last line makes ``Foo`` a virtual subclass of ``MyIterable``,
-   even though it does not define an :meth:`~iterator.__iter__` method (it uses
-   the old-style iterable protocol, defined in terms of :meth:`__len__` and
+   even though it does not define an :meth:`__iter__` method (it uses the
+   old-style iterable protocol, defined in terms of :meth:`__len__` and
    :meth:`__getitem__`).  Note that this will not make ``get_iterator``
    available as a method of ``Foo``, so it is provided separately.
 
 
 It also provides the following decorators:
 
-.. function:: abstractmethod(function)
+.. decorator:: abstractmethod
 
    A decorator indicating abstract methods.
 
@@ -149,8 +146,7 @@ It also provides the following decorators:
 
    Usage::
 
-      class C:
-          __metaclass__ = ABCMeta
+      class C(metaclass=ABCMeta):
           @abstractmethod
           def my_abstract_method(self, ...):
               ...
@@ -165,7 +161,37 @@ It also provides the following decorators:
       multiple-inheritance.
 
 
-.. function:: abstractproperty([fget[, fset[, fdel[, doc]]]])
+.. decorator:: abstractclassmethod
+
+   A subclass of the built-in :func:`classmethod`, indicating an abstract
+   classmethod. Otherwise it is similar to :func:`abstractmethod`.
+
+   Usage::
+
+      class C(metaclass=ABCMeta):
+          @abstractclassmethod
+          def my_abstract_classmethod(cls, ...):
+              ...
+
+   .. versionadded:: 3.2
+
+
+.. decorator:: abstractstaticmethod
+
+   A subclass of the built-in :func:`staticmethod`, indicating an abstract
+   staticmethod. Otherwise it is similar to :func:`abstractmethod`.
+
+   Usage::
+
+      class C(metaclass=ABCMeta):
+          @abstractstaticmethod
+          def my_abstract_staticmethod(...):
+              ...
+
+   .. versionadded:: 3.2
+
+
+.. function:: abstractproperty(fget=None, fset=None, fdel=None, doc=None)
 
    A subclass of the built-in :func:`property`, indicating an abstract property.
 
@@ -178,8 +204,7 @@ It also provides the following decorators:
 
    Usage::
 
-      class C:
-          __metaclass__ = ABCMeta
+      class C(metaclass=ABCMeta):
           @abstractproperty
           def my_abstract_property(self):
               ...
@@ -187,8 +212,7 @@ It also provides the following decorators:
    This defines a read-only property; you can also define a read-write abstract
    property using the 'long' form of property declaration::
 
-      class C:
-          __metaclass__ = ABCMeta
+      class C(metaclass=ABCMeta):
           def getx(self): ...
           def setx(self, value): ...
           x = abstractproperty(getx, setx)

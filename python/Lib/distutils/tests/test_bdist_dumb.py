@@ -1,17 +1,11 @@
 """Tests for distutils.command.bdist_dumb."""
 
 import os
+import imp
 import sys
 import zipfile
 import unittest
-from test.test_support import run_unittest
-
-# zlib is not used here, but if it's not available
-# test_simple_built will fail
-try:
-    import zlib
-except ImportError:
-    zlib = None
+from test.support import run_unittest
 
 from distutils.core import Distribution
 from distutils.command.bdist_dumb import bdist_dumb
@@ -25,6 +19,13 @@ setup(name='foo', version='0.1', py_modules=['foo'],
       url='xxx', author='xxx', author_email='xxx')
 
 """
+
+try:
+    import zlib
+    ZLIB_SUPPORT = True
+except ImportError:
+    ZLIB_SUPPORT = False
+
 
 class BuildDumbTestCase(support.TempdirManager,
                         support.LoggingSilencer,
@@ -42,7 +43,7 @@ class BuildDumbTestCase(support.TempdirManager,
         sys.argv[:] = self.old_sys_argv[1]
         super(BuildDumbTestCase, self).tearDown()
 
-    @unittest.skipUnless(zlib, "requires zlib")
+    @unittest.skipUnless(ZLIB_SUPPORT, 'Need zlib support to run')
     def test_simple_built(self):
 
         # let's create a simple package
@@ -86,26 +87,11 @@ class BuildDumbTestCase(support.TempdirManager,
         finally:
             fp.close()
 
-        contents = sorted(filter(None, map(os.path.basename, contents)))
+        contents = sorted(os.path.basename(fn) for fn in contents)
         wanted = ['foo-0.1-py%s.%s.egg-info' % sys.version_info[:2], 'foo.py']
         if not sys.dont_write_bytecode:
-            wanted.append('foo.pyc')
+            wanted.append('foo.%s.pyc' % imp.get_tag())
         self.assertEqual(contents, sorted(wanted))
-
-    def test_finalize_options(self):
-        pkg_dir, dist = self.create_dist()
-        os.chdir(pkg_dir)
-        cmd = bdist_dumb(dist)
-        self.assertEqual(cmd.bdist_dir, None)
-        cmd.finalize_options()
-
-        # bdist_dir is initialized to bdist_base/dumb if not set
-        base = cmd.get_finalized_command('bdist').bdist_base
-        self.assertEqual(cmd.bdist_dir, os.path.join(base, 'dumb'))
-
-        # the format is set to a default value depending on the os.name
-        default = cmd.default_format[os.name]
-        self.assertEqual(cmd.format, default)
 
 def test_suite():
     return unittest.makeSuite(BuildDumbTestCase)

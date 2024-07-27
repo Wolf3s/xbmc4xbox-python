@@ -3,17 +3,18 @@
 import unittest
 import sys
 import os
-import shutil
 import subprocess
+import shutil
 from copy import copy, deepcopy
 
-from test.test_support import run_unittest, TESTFN, unlink, get_attribute
+from test.support import (run_unittest, TESTFN, unlink,
+                          captured_stdout, skip_unless_symlink)
 
 import sysconfig
 from sysconfig import (get_paths, get_platform, get_config_vars,
                        get_path, get_path_names, _INSTALL_SCHEMES,
                        _get_default_scheme, _expand_vars,
-                       get_scheme_names, get_config_var)
+                       get_scheme_names, get_config_var, _main)
 import _osx_support
 
 class TestSysConfig(unittest.TestCase):
@@ -22,7 +23,6 @@ class TestSysConfig(unittest.TestCase):
         """Make a copy of sys.path"""
         super(TestSysConfig, self).setUp()
         self.sys_path = sys.path[:]
-        self.makefile = None
         # patching os.uname
         if hasattr(os, 'uname'):
             self.uname = os.uname
@@ -45,8 +45,6 @@ class TestSysConfig(unittest.TestCase):
     def tearDown(self):
         """Restore sys.path"""
         sys.path[:] = self.sys_path
-        if self.makefile is not None:
-            os.unlink(self.makefile)
         self._cleanup_testfn()
         if self.uname is not None:
             os.uname = self.uname
@@ -64,7 +62,7 @@ class TestSysConfig(unittest.TestCase):
             if os.environ.get(key) != value:
                 os.environ[key] = value
 
-        for key in os.environ.keys():
+        for key in list(os.environ.keys()):
             if key not in self.old_environ:
                 del os.environ[key]
 
@@ -90,9 +88,9 @@ class TestSysConfig(unittest.TestCase):
         scheme = get_paths()
         default_scheme = _get_default_scheme()
         wanted = _expand_vars(default_scheme, None)
-        wanted = wanted.items()
+        wanted = list(wanted.items())
         wanted.sort()
-        scheme = scheme.items()
+        scheme = list(scheme.items())
         scheme.sort()
         self.assertEqual(scheme, wanted)
 
@@ -104,7 +102,7 @@ class TestSysConfig(unittest.TestCase):
 
     def test_get_config_vars(self):
         cvars = get_config_vars()
-        self.assertIsInstance(cvars, dict)
+        self.assertTrue(isinstance(cvars, dict))
         self.assertTrue(cvars)
 
     def test_get_platform(self):
@@ -144,15 +142,14 @@ class TestSysConfig(unittest.TestCase):
         get_config_vars()['CFLAGS'] = ('-fno-strict-aliasing -DNDEBUG -g '
                                        '-fwrapv -O3 -Wall -Wstrict-prototypes')
 
-        maxint = sys.maxint
+        maxint = sys.maxsize
         try:
-            sys.maxint = 2147483647
+            sys.maxsize = 2147483647
             self.assertEqual(get_platform(), 'macosx-10.3-ppc')
-            sys.maxint = 9223372036854775807
+            sys.maxsize = 9223372036854775807
             self.assertEqual(get_platform(), 'macosx-10.3-ppc64')
         finally:
-            sys.maxint = maxint
-
+            sys.maxsize = maxint
 
         self._set_uname(('Darwin', 'macziade', '8.11.1',
                    ('Darwin Kernel Version 8.11.1: '
@@ -163,15 +160,14 @@ class TestSysConfig(unittest.TestCase):
 
         get_config_vars()['CFLAGS'] = ('-fno-strict-aliasing -DNDEBUG -g '
                                        '-fwrapv -O3 -Wall -Wstrict-prototypes')
-
-        maxint = sys.maxint
+        maxint = sys.maxsize
         try:
-            sys.maxint = 2147483647
+            sys.maxsize = 2147483647
             self.assertEqual(get_platform(), 'macosx-10.3-i386')
-            sys.maxint = 9223372036854775807
+            sys.maxsize = 9223372036854775807
             self.assertEqual(get_platform(), 'macosx-10.3-x86_64')
         finally:
-            sys.maxint = maxint
+            sys.maxsize = maxint
 
         # macbook with fat binaries (fat, universal or fat64)
         _osx_support._remove_original_values(get_config_vars())
@@ -218,9 +214,9 @@ class TestSysConfig(unittest.TestCase):
             get_config_vars()['CFLAGS'] = ('-arch %s -isysroot '
                                            '/Developer/SDKs/MacOSX10.4u.sdk  '
                                            '-fno-strict-aliasing -fno-common '
-                                           '-dynamic -DNDEBUG -g -O3'%(arch,))
+                                           '-dynamic -DNDEBUG -g -O3' % arch)
 
-            self.assertEqual(get_platform(), 'macosx-10.4-%s'%(arch,))
+            self.assertEqual(get_platform(), 'macosx-10.4-%s' % arch)
 
         # linux debian sarge
         os.name = 'posix'
@@ -243,25 +239,23 @@ class TestSysConfig(unittest.TestCase):
                   'posix_home', 'posix_prefix', 'posix_user')
         self.assertEqual(get_scheme_names(), wanted)
 
-    @unittest.skipIf(sys.platform.startswith('win'),
-                     'Test is not Windows compatible')
-    def test_get_makefile_filename(self):
-        makefile = sysconfig.get_makefile_filename()
-        self.assertTrue(os.path.isfile(makefile), makefile)
-        # Issue 22199
-        self.assertEqual(sysconfig._get_makefile_filename(), makefile)
-
+    @skip_unless_symlink
     def test_symlink(self):
+        # On Windows, the EXE needs to know where pythonXY.dll is at so we have
+        # to add the directory to the path.
+        if sys.platform == "win32":
+            os.environ["Path"] = "{};{}".format(
+                os.path.dirname(sys.executable), os.environ["Path"])
+
         # Issue 7880
-        symlink = get_attribute(os, "symlink")
         def get(python):
             cmd = [python, '-c',
-                   'import sysconfig; print sysconfig.get_platform()']
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+                   'import sysconfig; print(sysconfig.get_platform())']
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, env=os.environ)
             return p.communicate()
         real = os.path.realpath(sys.executable)
         link = os.path.abspath(TESTFN)
-        symlink(real, link)
+        os.symlink(real, link)
         try:
             self.assertEqual(get(real), get(link))
         finally:
@@ -284,6 +278,20 @@ class TestSysConfig(unittest.TestCase):
             user_path = get_path(name, 'posix_user')
             self.assertEqual(user_path, global_path.replace(base, user, 1))
 
+    def test_main(self):
+        # just making sure _main() runs and returns things in the stdout
+        with captured_stdout() as output:
+            _main()
+        self.assertTrue(len(output.getvalue().split('\n')) > 0)
+
+    @unittest.skipIf(sys.platform == "win32", "Does not apply to Windows")
+    def test_ldshared_value(self):
+        ldflags = sysconfig.get_config_var('LDFLAGS')
+        ldshared = sysconfig.get_config_var('LDSHARED')
+
+        self.assertIn(ldflags, ldshared)
+
+
     @unittest.skipUnless(sys.platform == "darwin", "test only relevant on MacOSX")
     def test_platform_in_subprocess(self):
         my_platform = sysconfig.get_platform()
@@ -297,7 +305,7 @@ class TestSysConfig(unittest.TestCase):
         with open('/dev/null', 'w') as devnull_fp:
             p = subprocess.Popen([
                     sys.executable, '-c',
-                   'import sysconfig; print(sysconfig.get_platform())',
+                    'import sysconfig; print(sysconfig.get_platform())',
                 ],
                 stdout=subprocess.PIPE,
                 stderr=devnull_fp,
@@ -329,8 +337,34 @@ class TestSysConfig(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(my_platform, test_platform)
 
+
+class MakefileTests(unittest.TestCase):
+    @unittest.skipIf(sys.platform.startswith('win'),
+                     'Test is not Windows compatible')
+    def test_get_makefile_filename(self):
+        makefile = sysconfig.get_makefile_filename()
+        self.assertTrue(os.path.isfile(makefile), makefile)
+
+    def test_parse_makefile(self):
+        self.addCleanup(unlink, TESTFN)
+        with open(TESTFN, "w") as makefile:
+            print("var1=a$(VAR2)", file=makefile)
+            print("VAR2=b$(var3)", file=makefile)
+            print("var3=42", file=makefile)
+            print("var4=$/invalid", file=makefile)
+            print("var5=dollar$$5", file=makefile)
+        vars = sysconfig._parse_makefile(TESTFN)
+        self.assertEqual(vars, {
+            'var1': 'ab42',
+            'VAR2': 'b42',
+            'var3': 42,
+            'var4': '$/invalid',
+            'var5': 'dollar$5',
+        })
+
+
 def test_main():
-    run_unittest(TestSysConfig)
+    run_unittest(TestSysConfig, MakefileTests)
 
 if __name__ == "__main__":
     test_main()

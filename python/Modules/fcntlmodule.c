@@ -21,20 +21,20 @@ conv_descriptor(PyObject *object, int *target)
     int fd = PyObject_AsFileDescriptor(object);
 
     if (fd < 0)
-        return 0;
+    return 0;
     *target = fd;
     return 1;
 }
 
 
-/* fcntl(fd, op, [arg]) */
+/* fcntl(fd, opt, [arg]) */
 
 static PyObject *
 fcntl_fcntl(PyObject *self, PyObject *args)
 {
     int fd;
     int code;
-    int arg;
+    long arg;
     int ret;
     char *str;
     Py_ssize_t len;
@@ -55,13 +55,13 @@ fcntl_fcntl(PyObject *self, PyObject *args)
             PyErr_SetFromErrno(PyExc_IOError);
             return NULL;
         }
-        return PyString_FromStringAndSize(buf, len);
+        return PyBytes_FromStringAndSize(buf, len);
     }
 
     PyErr_Clear();
     arg = 0;
     if (!PyArg_ParseTuple(args,
-         "O&i|I;fcntl requires a file or file descriptor,"
+         "O&i|l;fcntl requires a file or file descriptor,"
          " an integer and optionally a third integer or a string",
                           conv_descriptor, &fd, &code, &arg)) {
       return NULL;
@@ -73,16 +73,15 @@ fcntl_fcntl(PyObject *self, PyObject *args)
         PyErr_SetFromErrno(PyExc_IOError);
         return NULL;
     }
-    return PyInt_FromLong((long)ret);
+    return PyLong_FromLong((long)ret);
 }
 
 PyDoc_STRVAR(fcntl_doc,
-"fcntl(fd, op, [arg])\n\
+"fcntl(fd, opt, [arg])\n\
 \n\
-Perform the operation op on file descriptor fd.  The values used\n\
-for op are operating system dependent, and are available\n\
-as constants in the fcntl module, using the same names as used in\n\
-the relevant C header files.  The argument arg is optional, and\n\
+Perform the requested operation on file descriptor fd.  The operation\n\
+is defined by op and is operating system dependent.  These constants are\n\
+available from the fcntl module.  The argument arg is optional, and\n\
 defaults to 0; it may be an int or a string.  If arg is given as a string,\n\
 the return value of fcntl is a string of that length, containing the\n\
 resulting value put in the arg buffer by the operating system.  The length\n\
@@ -91,7 +90,7 @@ is an integer or if none is specified, the result value is an integer\n\
 corresponding to the return value of the fcntl call in the C code.");
 
 
-/* ioctl(fd, op, [arg]) */
+/* ioctl(fd, opt, [arg]) */
 
 static PyObject *
 fcntl_ioctl(PyObject *self, PyObject *args)
@@ -105,7 +104,7 @@ fcntl_ioctl(PyObject *self, PyObject *args)
        whereas the system expects it to be a 32bit bit field value
        regardless of it being passed as an int or unsigned long on
        various platforms.  See the termios.TIOCSWINSZ constant across
-       platforms for an example of this.
+       platforms for an example of thise.
 
        If any of the 64bit platforms ever decide to use more than 32bits
        in their unsigned long ioctl codes this will break and need
@@ -114,15 +113,18 @@ fcntl_ioctl(PyObject *self, PyObject *args)
     unsigned int code;
     int arg;
     int ret;
+    Py_buffer pstr;
     char *str;
     Py_ssize_t len;
     int mutate_arg = 1;
     char buf[IOCTL_BUFSZ+1];  /* argument plus NUL byte */
 
-    if (PyArg_ParseTuple(args, "O&Iw#|i:ioctl",
+    if (PyArg_ParseTuple(args, "O&Iw*|i:ioctl",
                          conv_descriptor, &fd, &code,
-                         &str, &len, &mutate_arg)) {
+                         &pstr, &mutate_arg)) {
         char *arg;
+        str = pstr.buf;
+        len = pstr.len;
 
         if (mutate_arg) {
             if (len <= IOCTL_BUFSZ) {
@@ -136,6 +138,7 @@ fcntl_ioctl(PyObject *self, PyObject *args)
         }
         else {
             if (len > IOCTL_BUFSZ) {
+                PyBuffer_Release(&pstr);
                 PyErr_SetString(PyExc_ValueError,
                     "ioctl string arg too long");
                 return NULL;
@@ -157,22 +160,26 @@ fcntl_ioctl(PyObject *self, PyObject *args)
         if (mutate_arg && (len <= IOCTL_BUFSZ)) {
             memcpy(str, buf, len);
         }
+        PyBuffer_Release(&pstr); /* No further access to str below this point */
         if (ret < 0) {
             PyErr_SetFromErrno(PyExc_IOError);
             return NULL;
         }
         if (mutate_arg) {
-            return PyInt_FromLong(ret);
+            return PyLong_FromLong(ret);
         }
         else {
-            return PyString_FromStringAndSize(buf, len);
+            return PyBytes_FromStringAndSize(buf, len);
         }
     }
 
     PyErr_Clear();
-    if (PyArg_ParseTuple(args, "O&Is#:ioctl",
-                         conv_descriptor, &fd, &code, &str, &len)) {
+    if (PyArg_ParseTuple(args, "O&Is*:ioctl",
+                         conv_descriptor, &fd, &code, &pstr)) {
+        str = pstr.buf;
+        len = pstr.len;
         if (len > IOCTL_BUFSZ) {
+            PyBuffer_Release(&pstr);
             PyErr_SetString(PyExc_ValueError,
                             "ioctl string arg too long");
             return NULL;
@@ -183,10 +190,12 @@ fcntl_ioctl(PyObject *self, PyObject *args)
         ret = ioctl(fd, code, buf);
         Py_END_ALLOW_THREADS
         if (ret < 0) {
+            PyBuffer_Release(&pstr);
             PyErr_SetFromErrno(PyExc_IOError);
             return NULL;
         }
-        return PyString_FromStringAndSize(buf, len);
+        PyBuffer_Release(&pstr);
+        return PyBytes_FromStringAndSize(buf, len);
     }
 
     PyErr_Clear();
@@ -208,17 +217,16 @@ fcntl_ioctl(PyObject *self, PyObject *args)
         PyErr_SetFromErrno(PyExc_IOError);
         return NULL;
     }
-    return PyInt_FromLong((long)ret);
+    return PyLong_FromLong((long)ret);
 #undef IOCTL_BUFSZ
 }
 
 PyDoc_STRVAR(ioctl_doc,
-"ioctl(fd, op[, arg[, mutate_flag]])\n\
+"ioctl(fd, opt[, arg[, mutate_flag]])\n\
 \n\
-Perform the operation op on file descriptor fd.  The values used for op\n\
-are operating system dependent, and are available as constants in the\n\
-fcntl or termios library modules, using the same names as used in the\n\
-relevant C header files.\n\
+Perform the requested operation on file descriptor fd.  The operation is\n\
+defined by opt and is operating system dependent.  Typically these codes are\n\
+retrieved from the fcntl or termios library modules.\n\
 \n\
 The argument arg is optional, and defaults to 0; it may be an int or a\n\
 buffer containing character data (most likely a string or an array). \n\
@@ -301,7 +309,7 @@ PyDoc_STRVAR(flock_doc,
 "flock(fd, operation)\n\
 \n\
 Perform the lock operation op on file descriptor fd.  See the Unix \n\
-manual page for flock(2) for details.  (On some systems, this function is\n\
+manual page for flock(3) for details.  (On some systems, this function is\n\
 emulated using fcntl().)");
 
 
@@ -344,22 +352,22 @@ fcntl_lockf(PyObject *self, PyObject *args)
         l.l_start = l.l_len = 0;
         if (startobj != NULL) {
 #if !defined(HAVE_LARGEFILE_SUPPORT)
-            l.l_start = PyInt_AsLong(startobj);
+            l.l_start = PyLong_AsLong(startobj);
 #else
             l.l_start = PyLong_Check(startobj) ?
                             PyLong_AsLongLong(startobj) :
-                    PyInt_AsLong(startobj);
+                    PyLong_AsLong(startobj);
 #endif
             if (PyErr_Occurred())
                 return NULL;
         }
         if (lenobj != NULL) {
 #if !defined(HAVE_LARGEFILE_SUPPORT)
-            l.l_len = PyInt_AsLong(lenobj);
+            l.l_len = PyLong_AsLong(lenobj);
 #else
             l.l_len = PyLong_Check(lenobj) ?
                             PyLong_AsLongLong(lenobj) :
-                    PyInt_AsLong(lenobj);
+                    PyLong_AsLong(lenobj);
 #endif
             if (PyErr_Occurred())
                 return NULL;
@@ -425,7 +433,7 @@ a file or socket object.");
 static int
 ins(PyObject* d, char* symbol, long value)
 {
-    PyObject* v = PyInt_FromLong(value);
+    PyObject* v = PyLong_FromLong(value);
     if (!v || PyDict_SetItemString(d, symbol, v) < 0)
         return -1;
 
@@ -606,17 +614,31 @@ all_ins(PyObject* d)
     return 0;
 }
 
+
+static struct PyModuleDef fcntlmodule = {
+    PyModuleDef_HEAD_INIT,
+    "fcntl",
+    module_doc,
+    -1,
+    fcntl_methods,
+    NULL,
+    NULL,
+    NULL,
+    NULL
+};
+
 PyMODINIT_FUNC
-initfcntl(void)
+PyInit_fcntl(void)
 {
     PyObject *m, *d;
 
     /* Create the module and add the functions and documentation */
-    m = Py_InitModule3("fcntl", fcntl_methods, module_doc);
+    m = PyModule_Create(&fcntlmodule);
     if (m == NULL)
-        return;
+        return NULL;
 
     /* Add some symbolic constants to the module */
     d = PyModule_GetDict(m);
     all_ins(d);
+    return m;
 }

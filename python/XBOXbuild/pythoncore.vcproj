@@ -104,7 +104,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="getbuildinfo.o"
-				OutputFile="$(OutDir)\python27.dll"
+				OutputFile="$(OutDir)\python32.dll"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="&quot;$(OutDir)&quot;;&quot;$(SolutionDir)&quot;"
 				IgnoreDefaultLibraryNames="libc;msvcr71;libcmt"
@@ -150,6 +150,9 @@
 				RelativePath="..\Include\abstract.h">
 			</File>
 			<File
+				RelativePath="..\Include\accu.h">
+			</File>
+			<File
 				RelativePath="..\Include\asdl.h">
 			</File>
 			<File
@@ -159,10 +162,10 @@
 				RelativePath="..\Include\bitset.h">
 			</File>
 			<File
-				RelativePath="..\Include\boolobject.h">
+				RelativePath="..\Include\bltinmodule.h">
 			</File>
 			<File
-				RelativePath="..\Include\bufferobject.h">
+				RelativePath="..\Include\boolobject.h">
 			</File>
 			<File
 				RelativePath="..\Include\bytearrayobject.h">
@@ -183,9 +186,6 @@
 				RelativePath="..\Include\classobject.h">
 			</File>
 			<File
-				RelativePath="..\Include\cobject.h">
-			</File>
-			<File
 				RelativePath="..\Include\code.h">
 			</File>
 			<File
@@ -196,9 +196,6 @@
 			</File>
 			<File
 				RelativePath="..\Include\complexobject.h">
-			</File>
-			<File
-				RelativePath="..\Include\cStringIO.h">
 			</File>
 			<File
 				RelativePath="..\Include\datetime.h">
@@ -213,6 +210,9 @@
 				RelativePath="..\Include\dtoa.h">
 			</File>
 			<File
+				RelativePath="..\Include\dynamic_annotations.h">
+			</File>
+			<File
 				RelativePath="..\Include\enumobject.h">
 			</File>
 			<File
@@ -223,6 +223,9 @@
 			</File>
 			<File
 				RelativePath="..\Include\fileobject.h">
+			</File>
+			<File
+				RelativePath="..\Include\fileutils.h">
 			</File>
 			<File
 				RelativePath="..\Include\floatobject.h">
@@ -244,9 +247,6 @@
 			</File>
 			<File
 				RelativePath="..\Include\import.h">
-			</File>
-			<File
-				RelativePath="..\Include\intobject.h">
 			</File>
 			<File
 				RelativePath="..\Include\intrcheck.h">
@@ -315,6 +315,9 @@
 				RelativePath="..\Include\pyarena.h">
 			</File>
 			<File
+				RelativePath="..\Include\pyatomic.h">
+			</File>
+			<File
 				RelativePath="..\Include\pycapsule.h">
 			</File>
 			<File
@@ -336,7 +339,7 @@
 				RelativePath="..\Include\pygetopt.h">
 			</File>
 			<File
-				RelativePath="..\Include\pymactoolbox.h">
+				RelativePath="..\Include\pymacconfig.h">
 			</File>
 			<File
 				RelativePath="..\Include\pymath.h">
@@ -369,6 +372,9 @@
 				RelativePath="..\Include\pythread.h">
 			</File>
 			<File
+				RelativePath="..\Include\pytime.h">
+			</File>
+			<File
 				RelativePath="..\Include\rangeobject.h">
 			</File>
 			<File
@@ -376,9 +382,6 @@
 			</File>
 			<File
 				RelativePath="..\Include\sliceobject.h">
-			</File>
-			<File
-				RelativePath="..\Include\stringobject.h">
 			</File>
 			<File
 				RelativePath="..\Include\structmember.h">
@@ -405,10 +408,16 @@
 				RelativePath="..\Include\tupleobject.h">
 			</File>
 			<File
+				RelativePath="..\Include\typeslots.h">
+			</File>
+			<File
 				RelativePath="..\Include\ucnhash.h">
 			</File>
 			<File
 				RelativePath="..\Include\unicodeobject.h">
+			</File>
+			<File
+				RelativePath="..\Include\warnings.h">
 			</File>
 			<File
 				RelativePath="..\Include\weakrefobject.h">
@@ -432,10 +441,10 @@
 				RelativePath="..\Modules\_functoolsmodule.c">
 			</File>
 			<File
-				RelativePath="..\Modules\_heapqmodule.c">
+				RelativePath="..\Modules\_hashopenssl.c">
 			</File>
 			<File
-				RelativePath="..\Modules\_hotshot.c">
+				RelativePath="..\Modules\_heapqmodule.c">
 			</File>
 			<File
 				RelativePath="..\Modules\_json.c">
@@ -459,13 +468,37 @@
 				RelativePath="..\Modules\_sre.c">
 			</File>
 			<File
+				RelativePath="..\Modules\_ssl.c">
+			</File>
+			<File
 				RelativePath="..\Modules\_struct.c">
+			</File>
+			<File
+				RelativePath="..\Modules\_testembed.c">
+			</File>
+			<File
+				RelativePath="..\Modules\_threadmodule.c">
+			</File>
+			<File
+				RelativePath="..\Modules\_time.c">
+			</File>
+			<File
+				RelativePath="..\Modules\_time.h">
 			</File>
 			<File
 				RelativePath="..\Modules\_weakref.c">
 			</File>
 			<File
+				RelativePath="..\Modules\addrinfo.h">
+			</File>
+			<File
 				RelativePath="..\Modules\arraymodule.c">
+			</File>
+			<File
+				RelativePath="..\Modules\atexitmodule.c">
+			</File>
+			<File
+				RelativePath="..\Modules\audioop.c">
 			</File>
 			<File
 				RelativePath="..\Modules\binascii.c">
@@ -474,22 +507,25 @@
 				RelativePath="..\Modules\cmathmodule.c">
 			</File>
 			<File
-				RelativePath="..\Modules\cPickle.c">
-			</File>
-			<File
-				RelativePath="..\Modules\cStringIO.c">
-			</File>
-			<File
-				RelativePath="..\Modules\datetimemodule.c">
+				RelativePath="..\Modules\cryptmodule.c">
 			</File>
 			<File
 				RelativePath="..\Modules\errnomodule.c">
 			</File>
 			<File
-				RelativePath="..\Modules\future_builtins.c">
+				RelativePath="..\Modules\fpectlmodule.c">
+			</File>
+			<File
+				RelativePath="..\Modules\fpetestmodule.c">
 			</File>
 			<File
 				RelativePath="..\Modules\gcmodule.c">
+			</File>
+			<File
+				RelativePath="..\Modules\getbuildinfo.c">
+			</File>
+			<File
+				RelativePath="..\Modules\hashlib.h">
 			</File>
 			<File
 				RelativePath="..\Modules\itertoolsmodule.c">
@@ -499,12 +535,6 @@
 			</File>
 			<File
 				RelativePath="..\Modules\mathmodule.c">
-			</File>
-			<File
-				RelativePath="..\Modules\md5.c">
-			</File>
-			<File
-				RelativePath="..\Modules\md5.h">
 			</File>
 			<File
 				RelativePath="..\Modules\md5module.c">
@@ -522,10 +552,19 @@
 				RelativePath="..\Modules\posixmodule.c">
 			</File>
 			<File
+				RelativePath="..\Modules\posixmodule.h">
+			</File>
+			<File
+				RelativePath="..\Modules\python.c">
+			</File>
+			<File
 				RelativePath="..\Modules\rotatingtree.c">
 			</File>
 			<File
 				RelativePath="..\Modules\rotatingtree.h">
+			</File>
+			<File
+				RelativePath="..\Modules\sha1module.c">
 			</File>
 			<File
 				RelativePath="..\Modules\sha256module.c">
@@ -534,22 +573,28 @@
 				RelativePath="..\Modules\sha512module.c">
 			</File>
 			<File
-				RelativePath="..\Modules\shamodule.c">
-			</File>
-			<File
 				RelativePath="..\Modules\signalmodule.c">
 			</File>
 			<File
-				RelativePath="..\Modules\stropmodule.c">
+				RelativePath="..\Modules\sre.h">
+			</File>
+			<File
+				RelativePath="..\Modules\sre_constants.h">
 			</File>
 			<File
 				RelativePath="..\Modules\symtablemodule.c">
 			</File>
 			<File
-				RelativePath="..\Modules\threadmodule.c">
+				RelativePath="..\Modules\testcapi_long.h">
 			</File>
 			<File
 				RelativePath="..\Modules\timemodule.c">
+			</File>
+			<File
+				RelativePath="..\Modules\xxlimited.c">
+			</File>
+			<File
+				RelativePath="..\Modules\xxmodule.c">
 			</File>
 			<File
 				RelativePath="..\Modules\xxsubtype.c">
@@ -581,6 +626,27 @@
 					RelativePath="..\Modules\zlib\deflate.h">
 				</File>
 				<File
+					RelativePath="..\Modules\zlib\example.c">
+				</File>
+				<File
+					RelativePath="..\Modules\zlib\gzclose.c">
+				</File>
+				<File
+					RelativePath="..\Modules\zlib\gzguts.h">
+				</File>
+				<File
+					RelativePath="..\Modules\zlib\gzio.c">
+				</File>
+				<File
+					RelativePath="..\Modules\zlib\gzlib.c">
+				</File>
+				<File
+					RelativePath="..\Modules\zlib\gzread.c">
+				</File>
+				<File
+					RelativePath="..\Modules\zlib\gzwrite.c">
+				</File>
+				<File
 					RelativePath="..\Modules\zlib\infback.c">
 				</File>
 				<File
@@ -603,6 +669,9 @@
 				</File>
 				<File
 					RelativePath="..\Modules\zlib\inftrees.h">
+				</File>
+				<File
+					RelativePath="..\Modules\zlib\minigzip.c">
 				</File>
 				<File
 					RelativePath="..\Modules\zlib\trees.c">
@@ -717,16 +786,19 @@
 				RelativePath="..\Objects\abstract.c">
 			</File>
 			<File
-				RelativePath="..\Objects\boolobject.c">
+				RelativePath="..\Objects\accu.c">
 			</File>
 			<File
-				RelativePath="..\Objects\bufferobject.c">
+				RelativePath="..\Objects\boolobject.c">
 			</File>
 			<File
 				RelativePath="..\Objects\bytearrayobject.c">
 			</File>
 			<File
 				RelativePath="..\Objects\bytes_methods.c">
+			</File>
+			<File
+				RelativePath="..\Objects\bytesobject.c">
 			</File>
 			<File
 				RelativePath="..\Objects\capsule.c">
@@ -738,16 +810,10 @@
 				RelativePath="..\Objects\classobject.c">
 			</File>
 			<File
-				RelativePath="..\Objects\cobject.c">
-			</File>
-			<File
 				RelativePath="..\Objects\codeobject.c">
 			</File>
 			<File
 				RelativePath="..\Objects\complexobject.c">
-			</File>
-			<File
-				RelativePath="..\Objects\stringlib\count.h">
 			</File>
 			<File
 				RelativePath="..\Objects\descrobject.c">
@@ -762,13 +828,7 @@
 				RelativePath="..\Objects\exceptions.c">
 			</File>
 			<File
-				RelativePath="..\Objects\stringlib\fastsearch.h">
-			</File>
-			<File
 				RelativePath="..\Objects\fileobject.c">
-			</File>
-			<File
-				RelativePath="..\Objects\stringlib\find.h">
 			</File>
 			<File
 				RelativePath="..\Objects\floatobject.c">
@@ -781,9 +841,6 @@
 			</File>
 			<File
 				RelativePath="..\Objects\genobject.c">
-			</File>
-			<File
-				RelativePath="..\Objects\intobject.c">
 			</File>
 			<File
 				RelativePath="..\Objects\iterobject.c">
@@ -810,9 +867,6 @@
 				RelativePath="..\Objects\obmalloc.c">
 			</File>
 			<File
-				RelativePath="..\Objects\stringlib\partition.h">
-			</File>
-			<File
 				RelativePath="..\Objects\rangeobject.c">
 			</File>
 			<File
@@ -822,12 +876,6 @@
 				RelativePath="..\Objects\sliceobject.c">
 			</File>
 			<File
-				RelativePath="..\Objects\stringlib\split.h">
-			</File>
-			<File
-				RelativePath="..\Objects\stringobject.c">
-			</File>
-			<File
 				RelativePath="..\Objects\structseq.c">
 			</File>
 			<File
@@ -835,6 +883,9 @@
 			</File>
 			<File
 				RelativePath="..\Objects\typeobject.c">
+			</File>
+			<File
+				RelativePath="..\Objects\typeslots.inc">
 			</File>
 			<File
 				RelativePath="..\Objects\unicodectype.c">
@@ -867,6 +918,9 @@
 				RelativePath="..\Parser\grammar1.c">
 			</File>
 			<File
+				RelativePath="..\Parser\intrcheck.c">
+			</File>
+			<File
 				RelativePath="..\Parser\listnode.c">
 			</File>
 			<File
@@ -888,31 +942,37 @@
 				RelativePath="..\Parser\parsetok.c">
 			</File>
 			<File
+				RelativePath="..\Parser\pgen.c">
+			</File>
+			<File
+				RelativePath="..\Parser\pgenmain.c">
+			</File>
+			<File
+				RelativePath="..\Parser\printgrammar.c">
+			</File>
+			<File
 				RelativePath="..\Parser\tokenizer.c">
 			</File>
 			<File
 				RelativePath="..\Parser\tokenizer.h">
 			</File>
+			<File
+				RelativePath="..\Parser\tokenizer_pgen.c">
+			</File>
 		</Filter>
 		<Filter
 			Name="PC">
 			<File
-				RelativePath="..\PC\config.c">
+				RelativePath="..\Pc\config.c">
 			</File>
 			<File
-				RelativePath="..\PC\dl_nt.c">
+				RelativePath="..\Pc\dl_nt.c">
 			</File>
 			<File
-				RelativePath="..\PC\errmap.h">
+				RelativePath="..\Pc\pyconfig.h">
 			</File>
 			<File
-				RelativePath="..\PC\getpathp.c">
-			</File>
-			<File
-				RelativePath="..\PC\import_nt.c">
-			</File>
-			<File
-				RelativePath="..\PC\pyconfig.h">
+				RelativePath="..\Pc\xbox_dll.h">
 			</File>
 		</Filter>
 		<Filter
@@ -933,6 +993,9 @@
 				RelativePath="..\Python\ceval.c">
 			</File>
 			<File
+				RelativePath="..\Python\ceval_gil.h">
+			</File>
+			<File
 				RelativePath="..\Python\codecs.c">
 			</File>
 			<File
@@ -942,19 +1005,25 @@
 				RelativePath="..\Python\dtoa.c">
 			</File>
 			<File
+				RelativePath="..\Python\dynamic_annotations.c">
+			</File>
+			<File
 				RelativePath="..\Python\dynload_win.c">
 			</File>
 			<File
 				RelativePath="..\Python\errors.c">
 			</File>
 			<File
-				RelativePath="..\Python\formatter_string.c">
+				RelativePath="..\Python\fileutils.c">
 			</File>
 			<File
 				RelativePath="..\Python\formatter_unicode.c">
 			</File>
 			<File
 				RelativePath="..\Python\frozen.c">
+			</File>
+			<File
+				RelativePath="..\Python\frozenmain.c">
 			</File>
 			<File
 				RelativePath="..\Python\future.c">
@@ -1002,6 +1071,9 @@
 				RelativePath="..\Python\mystrtoul.c">
 			</File>
 			<File
+				RelativePath="..\Python\opcode_targets.h">
+			</File>
+			<File
 				RelativePath="..\Python\peephole.c">
 			</File>
 			<File
@@ -1032,7 +1104,16 @@
 				RelativePath="..\Python\pythonrun.c">
 			</File>
 			<File
+				RelativePath="..\Python\pytime.c">
+			</File>
+			<File
 				RelativePath="..\Python\random.c">
+			</File>
+			<File
+				RelativePath="..\Python\sigcheck.c">
+			</File>
+			<File
+				RelativePath="..\Python\strdup.c">
 			</File>
 			<File
 				RelativePath="..\Python\structmember.c">
@@ -1047,7 +1128,7 @@
 				RelativePath="..\Python\thread.c">
 			</File>
 			<File
-				RelativePath="..\Python\thread_nt.h">
+				RelativePath="..\Python\thread_pthread.h">
 			</File>
 			<File
 				RelativePath="..\Python\traceback.c">

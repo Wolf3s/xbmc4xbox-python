@@ -41,8 +41,8 @@ Main options
 
 At least one of the following options must be specified when invoking
 :mod:`trace`.  The :option:`--listfuncs <-l>` option is mutually exclusive with
-the :option:`--trace <-t>` and :option:`--count <-c>` options. When
-:option:`--listfuncs <-l>` is provided, neither :option:`--count <-c>` nor
+the :option:`--trace <-t>` and :option:`--counts <-c>` options . When
+:option:`--listfuncs <-l>` is provided, neither :option:`--counts <-c>` nor
 :option:`--trace <-t>` are accepted, and vice versa.
 
 .. program:: trace
@@ -130,7 +130,8 @@ These options may be repeated multiple times.
 Programmatic Interface
 ----------------------
 
-.. class:: Trace([count=1[, trace=1[, countfuncs=0[, countcallers=0[, ignoremods=()[, ignoredirs=()[, infile=None[, outfile=None[, timing=False]]]]]]]]])
+.. class:: Trace(count=1, trace=1, countfuncs=0, countcallers=0, ignoremods=(),\
+                 ignoredirs=(), infile=None, outfile=None, timing=False)
 
    Create an object to trace execution of a single statement or expression.  All
    parameters are optional.  *count* enables counting of line numbers.  *trace*
@@ -177,7 +178,7 @@ Programmatic Interface
 
        Merge in data from another :class:`CoverageResults` object.
 
-    .. method:: write_results([show_missing=True[, summary=False[, coverdir=None]]])
+    .. method:: write_results(show_missing=True, summary=False, coverdir=None)
 
        Write coverage results.  Set *show_missing* to show lines that had no
        hits.  Set *summary* to include in the output the coverage summary per

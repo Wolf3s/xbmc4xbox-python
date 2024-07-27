@@ -1,4 +1,4 @@
-.TH PYTHON "1"
+.TH PYTHON "1" "$Date$"
 
 .\" To view this file while editing, run it through groff:
 .\"   groff -Tascii -man python.man | less
@@ -26,6 +26,9 @@ python \- an interpreted, interactive, object-oriented programming language
 .B \-m 
 .I module-name
 ]
+[
+.B \-q
+]
 .br
        [
 .B \-O
@@ -47,9 +50,6 @@ python \- an interpreted, interactive, object-oriented programming language
 .B \-S
 ]
 [
-.B \-t
-]
-[
 .B \-u
 ]
 .br
@@ -65,9 +65,6 @@ python \- an interpreted, interactive, object-oriented programming language
 ]
 [
 .B \-x
-]
-[
-.B \-3
 ]
 [
 .B \-?
@@ -87,7 +84,8 @@ python \- an interpreted, interactive, object-oriented programming language
 .SH DESCRIPTION
 Python is an interpreted, interactive, object-oriented programming
 language that combines remarkable power with very clear syntax.
-For an introduction to programming in Python, see the Python Tutorial.
+For an introduction to programming in Python you are referred to the
+Python Tutorial.
 The Python Library Reference documents built-in and standard types,
 constants, functions and modules.
 Finally, the Python Reference Manual describes the syntax and
@@ -153,6 +151,10 @@ to \fI.pyo\fP.  Given twice, causes docstrings to be discarded.
 .B \-OO
 Discard docstrings in addition to the \fB-O\fP optimizations.
 .TP
+.B \-q
+Do not print the version and copyright messages. These messages are 
+also suppressed in non-interactive mode.
+.TP
 .B \-R
 Turn on "hash randomization", so that the hash() values of str, bytes and
 datetime objects are "salted" with an unpredictable pseudo-random value.
@@ -184,18 +186,13 @@ and the site-dependent manipulations of
 .I sys.path
 that it entails.
 .TP
-.B \-t
-Issue a warning when a source file mixes tabs and spaces for
-indentation in a way that makes it depend on the worth of a tab
-expressed in spaces.  Issue an error when the option is given twice.
-.TP
 .B \-u
-Force stdin, stdout and stderr to be totally unbuffered.  On systems
-where it matters, also put stdin, stdout and stderr in binary mode.
-Note that there is internal buffering in xreadlines(), readlines() and
-file-object iterators ("for line in sys.stdin") which is not
-influenced by this option.  To work around this, you will want to use
-"sys.stdin.readline()" inside a "while 1:" loop.
+Force the binary I/O layers of stdin, stdout and stderr to be unbuffered.
+The text I/O layer will still be line-buffered.
+.\" Note that there is internal buffering in readlines() and
+.\" file-object iterators ("for line in sys.stdin") which is not
+.\" influenced by this option.  To work around this, you will want to use
+.\" "sys.stdin.readline()" inside a "while 1:" loop.
 .TP
 .B \-v
 Print a message each time a module is initialized, showing the place
@@ -276,9 +273,6 @@ is thus equivalent to an omitted line number.
 Skip the first line of the source.  This is intended for a DOS
 specific hack only.  Warning: the line numbers in error messages will
 be off by one!
-.TP
-.B \-3
-Warn about Python 3.x incompatibilities that 2to3 cannot trivially fix.
 .SH INTERPRETER INTERFACE
 The interpreter interface resembles that of the UNIX shell: when
 called with standard input connected to a tty device, it prompts for
@@ -289,9 +283,9 @@ executes a
 from that file;
 when called with
 .B \-c
-.IR command ,
+.I command,
 it executes the Python statement(s) given as
-.IR command .
+.I command.
 Here
 .I command
 may contain multiple statements separated by newlines.
@@ -301,7 +295,7 @@ executed.
 .PP
 If available, the script name and additional arguments thereafter are
 passed to the script in the Python variable
-.IR sys.argv ,
+.I sys.argv ,
 which is a list of strings (you must first
 .I import sys
 to be able to access it).
@@ -315,14 +309,14 @@ contains the string
 .I '-c'.
 Note that options interpreted by the Python interpreter itself
 are not placed in
-.IR sys.argv .
+.I sys.argv.
 .PP
 In interactive mode, the primary prompt is `>>>'; the second prompt
 (which appears when a command is not complete) is `...'.
 The prompts can be changed by assignment to
 .I sys.ps1
 or
-.IR sys.ps2 .
+.I sys.ps2.
 The interpreter quits when it reads an EOF at a prompt.
 When an unhandled exception occurs, a stack trace is printed and
 control returns to the primary prompt; in non-interactive mode, the
@@ -357,9 +351,6 @@ Recommended locations of the directories containing the include files
 needed for developing Python extensions and embedding the
 interpreter.
 .RE
-.IP \fI~/.pythonrc.py\fP
-User-specific initialization file loaded by the \fIuser\fP module;
-not used by default or by most applications.
 .SH ENVIRONMENT VARIABLES
 .IP PYTHONHOME
 Change the location of the standard Python libraries.  By default, the
@@ -381,7 +372,7 @@ If a script argument is given, the directory containing the script is
 inserted in the path in front of $PYTHONPATH.
 The search path can be manipulated from within a Python program as the
 variable
-.IR sys.path .
+.I sys.path .
 .IP PYTHONSTARTUP
 If this is the name of a readable file, the Python commands in that
 file are executed before the first prompt is displayed in interactive
@@ -452,17 +443,17 @@ The integer must be a decimal number in the range [0,4294967295].  Specifying
 the value 0 will lead to the same hash values as when hash randomization is
 disabled.
 .SH AUTHOR
-The Python Software Foundation: https://www.python.org/psf/
+The Python Software Foundation: http://www.python.org/psf
 .SH INTERNET RESOURCES
-Main website:  https://www.python.org/
+Main website:  http://www.python.org/
 .br
-Documentation:  https://docs.python.org/2/
+Documentation:  http://docs.python.org/py3k/
 .br
-Developer resources:  https://docs.python.org/devguide/
+Developer resources:  http://docs.python.org/devguide/
 .br
-Downloads:  https://www.python.org/downloads/
+Downloads:  http://python.org/download/
 .br
-Module repository:  https://pypi.python.org/
+Module repository:  http://pypi.python.org/
 .br
 Newsgroups:  comp.lang.python, comp.lang.python.announce
 .SH LICENSING

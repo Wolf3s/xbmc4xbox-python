@@ -1,4 +1,3 @@
-
 :mod:`ossaudiodev` --- Access to OSS-compatible audio devices
 =============================================================
 
@@ -6,8 +5,6 @@
    :platform: Linux, FreeBSD
    :synopsis: Access to OSS-compatible audio devices.
 
-
-.. versionadded:: 2.3
 
 This module allows you to access the OSS (Open Sound System) audio interface.
 OSS is available for a wide range of open-source and commercial Unices, and is
@@ -48,7 +45,7 @@ the standard audio interface for Linux and recent versions of FreeBSD.
       the official documentation for the OSS C API
 
    The module defines a large number of constants supplied by the OSS device
-   driver; see ``<sys/soundcard.h>`` on either Linux or FreeBSD for a listing.
+   driver; see ``<sys/soundcard.h>`` on either Linux or FreeBSD for a listing .
 
 :mod:`ossaudiodev` defines the following variables and functions:
 
@@ -163,11 +160,16 @@ and (read-only) attributes:
    is only useful in non-blocking mode.  Has no return value, since the amount of
    data written is always equal to the amount of data supplied.
 
-The following methods each map to exactly one :c:func:`ioctl` system call.  The
+.. versionchanged:: 3.2
+   Audio device objects also support the context manager protocol, i.e. they can
+   be used in a :keyword:`with` statement.
+
+
+The following methods each map to exactly one :func:`ioctl` system call.  The
 correspondence is obvious: for example, :meth:`setfmt` corresponds to the
 ``SNDCTL_DSP_SETFMT`` ioctl, and :meth:`sync` to ``SNDCTL_DSP_SYNC`` (this can
 be useful when consulting the OSS documentation).  If the underlying
-:c:func:`ioctl` fails, they all raise :exc:`IOError`.
+:func:`ioctl` fails, they all raise :exc:`IOError`.
 
 
 .. method:: oss_audio_device.nonblock()
@@ -296,7 +298,7 @@ simple calculations.
 
       fmt = dsp.setfmt(fmt)
       channels = dsp.channels(channels)
-      rate = dsp.rate(rate)
+      rate = dsp.rate(channels)
 
 
 .. method:: oss_audio_device.bufsize()
@@ -349,6 +351,10 @@ The mixer object provides two file-like methods:
 .. method:: oss_mixer_device.fileno()
 
    Returns the file handle number of the open mixer device file.
+
+.. versionchanged:: 3.2
+   Mixer objects also support the context manager protocol.
+
 
 The remaining methods are specific to audio mixing:
 

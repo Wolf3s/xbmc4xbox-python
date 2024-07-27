@@ -1,4 +1,3 @@
-
 :mod:`audioop` --- Manipulate raw audio data
 ============================================
 
@@ -8,8 +7,7 @@
 
 The :mod:`audioop` module contains some useful operations on sound fragments.
 It operates on sound fragments consisting of signed integer samples 8, 16 or 32
-bits wide, stored in Python strings.  This is the same format as used by the
-:mod:`al` and :mod:`sunaudiodev` modules.  All scalar items are integers, unless
+bits wide, stored in bytes objects.  All scalar items are integers, unless
 specified otherwise.
 
 .. index::
@@ -53,8 +51,6 @@ The module defines the following variables and functions:
    Convert sound fragments in a-LAW encoding to linearly encoded sound fragments.
    a-LAW encoding always uses 8 bits samples, so *width* refers only to the sample
    width of the output fragment here.
-
-   .. versionadded:: 2.5
 
 
 .. function:: avg(fragment, width)
@@ -130,11 +126,9 @@ The module defines the following variables and functions:
 .. function:: lin2alaw(fragment, width)
 
    Convert samples in the audio fragment to a-LAW encoding and return this as a
-   Python string.  a-LAW is an audio encoding format whereby you get a dynamic
+   bytes object.  a-LAW is an audio encoding format whereby you get a dynamic
    range of about 13 bits using only 8 bit samples.  It is used by the Sun audio
    hardware, among others.
-
-   .. versionadded:: 2.5
 
 
 .. function:: lin2lin(fragment, width, newwidth)
@@ -157,7 +151,7 @@ The module defines the following variables and functions:
 .. function:: lin2ulaw(fragment, width)
 
    Convert samples in the audio fragment to u-LAW encoding and return this as a
-   Python string.  u-LAW is an audio encoding format whereby you get a dynamic
+   bytes object.  u-LAW is an audio encoding format whereby you get a dynamic
    range of about 14 bits using only 8 bit samples.  It is used by the Sun audio
    hardware, among others.
 
@@ -247,7 +241,7 @@ to be stateless (i.e. to be able to tolerate packet loss) you should not only
 transmit the data but also the state.  Note that you should send the *initial*
 state (the one you passed to :func:`lin2adpcm`) along to the decoder, not the
 final state (as returned by the coder).  If you want to use
-:class:`struct.Struct` to store the state in binary you can code the first
+:func:`struct.struct` to store the state in binary you can code the first
 element (the predicted value) in 16 bits and the second (the delta index) in 8.
 
 The ADPCM coders have never been tried against other ADPCM coders, only against
@@ -269,6 +263,6 @@ sample and subtract the whole output sample from the input sample::
        #              out_test)
        prefill = '\0'*(pos+ipos)*2
        postfill = '\0'*(len(inputdata)-len(prefill)-len(outputdata))
-       outputdata = prefill + audioop.mul(outputdata, 2, -factor) + postfill
+       outputdata = prefill + audioop.mul(outputdata,2,-factor) + postfill
        return audioop.add(inputdata, outputdata, 2)
 

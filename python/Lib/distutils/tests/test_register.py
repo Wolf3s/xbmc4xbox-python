@@ -1,12 +1,11 @@
-# -*- encoding: utf8 -*-
 """Tests for distutils.command.register."""
 import os
 import unittest
 import getpass
-import urllib2
+import urllib
 import warnings
 
-from test.test_support import check_warnings, run_unittest
+from test.support import check_warnings, run_unittest
 
 from distutils.command import register as register_module
 from distutils.command.register import register
@@ -39,7 +38,7 @@ username:tarek
 password:password
 """
 
-class RawInputs(object):
+class Inputs(object):
     """Fakes user inputs."""
     def __init__(self, *answers):
         self.answers = answers
@@ -75,12 +74,12 @@ class RegisterTestCase(PyPIRCCommandTestCase):
         def _getpass(prompt):
             return 'password'
         getpass.getpass = _getpass
-        self.old_opener = urllib2.build_opener
-        self.conn = urllib2.build_opener = FakeOpener()
+        self.old_opener = urllib.request.build_opener
+        self.conn = urllib.request.build_opener = FakeOpener()
 
     def tearDown(self):
         getpass.getpass = self._old_getpass
-        urllib2.build_opener = self.old_opener
+        urllib.request.build_opener = self.old_opener
         super(RegisterTestCase, self).tearDown()
 
     def _get_cmd(self, metadata=None):
@@ -99,9 +98,9 @@ class RegisterTestCase(PyPIRCCommandTestCase):
         cmd = self._get_cmd()
 
         # we shouldn't have a .pypirc file yet
-        self.assertFalse(os.path.exists(self.rc))
+        self.assertTrue(not os.path.exists(self.rc))
 
-        # patching raw_input and getpass.getpass
+        # patching input and getpass.getpass
         # so register gets happy
         #
         # Here's what we are faking :
@@ -109,13 +108,13 @@ class RegisterTestCase(PyPIRCCommandTestCase):
         # Username : 'tarek'
         # Password : 'password'
         # Save your login (y/N)? : 'y'
-        inputs = RawInputs('1', 'tarek', 'y')
-        register_module.raw_input = inputs.__call__
+        inputs = Inputs('1', 'tarek', 'y')
+        register_module.input = inputs.__call__
         # let's run the command
         try:
             cmd.run()
         finally:
-            del register_module.raw_input
+            del register_module.input
 
         # we should have a brand new .pypirc file
         self.assertTrue(os.path.exists(self.rc))
@@ -133,7 +132,7 @@ class RegisterTestCase(PyPIRCCommandTestCase):
         # if we run the command again
         def _no_way(prompt=''):
             raise AssertionError(prompt)
-        register_module.raw_input = _no_way
+        register_module.input = _no_way
 
         cmd.show_response = 1
         cmd.run()
@@ -143,8 +142,10 @@ class RegisterTestCase(PyPIRCCommandTestCase):
         self.assertEqual(len(self.conn.reqs), 2)
         req1 = dict(self.conn.reqs[0].headers)
         req2 = dict(self.conn.reqs[1].headers)
-        self.assertEqual(req2['Content-length'], req1['Content-length'])
-        self.assertIn('xxx', self.conn.reqs[1].data)
+
+        self.assertEqual(req1['Content-length'], '1374')
+        self.assertEqual(req2['Content-length'], '1374')
+        self.assertTrue((b'xxx') in self.conn.reqs[1].data)
 
     def test_password_not_in_file(self):
 
@@ -161,38 +162,38 @@ class RegisterTestCase(PyPIRCCommandTestCase):
     def test_registering(self):
         # this test runs choice 2
         cmd = self._get_cmd()
-        inputs = RawInputs('2', 'tarek', 'tarek@ziade.org')
-        register_module.raw_input = inputs.__call__
+        inputs = Inputs('2', 'tarek', 'tarek@ziade.org')
+        register_module.input = inputs.__call__
         try:
             # let's run the command
             cmd.run()
         finally:
-            del register_module.raw_input
+            del register_module.input
 
         # we should have send a request
         self.assertEqual(len(self.conn.reqs), 1)
         req = self.conn.reqs[0]
         headers = dict(req.headers)
         self.assertEqual(headers['Content-length'], '608')
-        self.assertIn('tarek', req.data)
+        self.assertTrue((b'tarek') in req.data)
 
     def test_password_reset(self):
         # this test runs choice 3
         cmd = self._get_cmd()
-        inputs = RawInputs('3', 'tarek@ziade.org')
-        register_module.raw_input = inputs.__call__
+        inputs = Inputs('3', 'tarek@ziade.org')
+        register_module.input = inputs.__call__
         try:
             # let's run the command
             cmd.run()
         finally:
-            del register_module.raw_input
+            del register_module.input
 
         # we should have send a request
         self.assertEqual(len(self.conn.reqs), 1)
         req = self.conn.reqs[0]
         headers = dict(req.headers)
         self.assertEqual(headers['Content-length'], '290')
-        self.assertIn('tarek', req.data)
+        self.assertTrue((b'tarek') in req.data)
 
     @unittest.skipUnless(docutils is not None, 'needs docutils')
     def test_strict(self):
@@ -209,7 +210,7 @@ class RegisterTestCase(PyPIRCCommandTestCase):
 
         # metadata are OK but long_description is broken
         metadata = {'url': 'xxx', 'author': 'xxx',
-                    'author_email': u'éxéxé',
+                    'author_email': 'éxéxé',
                     'name': 'xxx', 'version': 'xxx',
                     'long_description': 'title\n==\n\ntext'}
 
@@ -223,42 +224,42 @@ class RegisterTestCase(PyPIRCCommandTestCase):
         cmd = self._get_cmd(metadata)
         cmd.ensure_finalized()
         cmd.strict = 1
-        inputs = RawInputs('1', 'tarek', 'y')
-        register_module.raw_input = inputs.__call__
+        inputs = Inputs('1', 'tarek', 'y')
+        register_module.input = inputs.__call__
         # let's run the command
         try:
             cmd.run()
         finally:
-            del register_module.raw_input
+            del register_module.input
 
         # strict is not by default
         cmd = self._get_cmd()
         cmd.ensure_finalized()
-        inputs = RawInputs('1', 'tarek', 'y')
-        register_module.raw_input = inputs.__call__
+        inputs = Inputs('1', 'tarek', 'y')
+        register_module.input = inputs.__call__
         # let's run the command
         try:
             cmd.run()
         finally:
-            del register_module.raw_input
+            del register_module.input
 
         # and finally a Unicode test (bug #12114)
-        metadata = {'url': u'xxx', 'author': u'\u00c9ric',
-                    'author_email': u'xxx', u'name': 'xxx',
-                    'version': u'xxx',
-                    'description': u'Something about esszet \u00df',
-                    'long_description': u'More things about esszet \u00df'}
+        metadata = {'url': 'xxx', 'author': '\u00c9ric',
+                    'author_email': 'xxx', 'name': 'xxx',
+                    'version': 'xxx',
+                    'description': 'Something about esszet \u00df',
+                    'long_description': 'More things about esszet \u00df'}
 
         cmd = self._get_cmd(metadata)
         cmd.ensure_finalized()
         cmd.strict = 1
-        inputs = RawInputs('1', 'tarek', 'y')
-        register_module.raw_input = inputs.__call__
+        inputs = Inputs('1', 'tarek', 'y')
+        register_module.input = inputs.__call__
         # let's run the command
         try:
             cmd.run()
         finally:
-            del register_module.raw_input
+            del register_module.input
 
     @unittest.skipUnless(docutils is not None, 'needs docutils')
     def test_register_invalid_long_description(self):
@@ -270,9 +271,10 @@ class RegisterTestCase(PyPIRCCommandTestCase):
         cmd = self._get_cmd(metadata)
         cmd.ensure_finalized()
         cmd.strict = True
-        inputs = RawInputs('2', 'tarek', 'tarek@ziade.org')
-        register_module.raw_input = inputs
-        self.addCleanup(delattr, register_module, 'raw_input')
+        inputs = Inputs('2', 'tarek', 'tarek@ziade.org')
+        register_module.input = inputs
+        self.addCleanup(delattr, register_module, 'input')
+
         self.assertRaises(DistutilsSetupError, cmd.run)
 
     def test_check_metadata_deprecated(self):

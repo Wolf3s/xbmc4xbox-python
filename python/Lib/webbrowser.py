@@ -1,7 +1,8 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 """Interfaces for launching and remotely controlling Web browsers."""
 # Maintained by Georg Brandl.
 
+import io
 import os
 import shlex
 import sys
@@ -159,7 +160,7 @@ class GenericBrowser(BaseBrowser):
        and without remote functionality."""
 
     def __init__(self, name):
-        if isinstance(name, basestring):
+        if isinstance(name, str):
             self.name = name
             self.args = ["%s"]
         else:
@@ -205,12 +206,18 @@ class UnixBrowser(BaseBrowser):
     """Parent class for all Unix browsers with remote functionality."""
 
     raise_opts = None
+    background = False
+    redirect_stdout = True
+    # In remote_args, %s will be replaced with the requested URL.  %action will
+    # be replaced depending on the value of 'new' passed to open.
+    # remote_action is used for new=0 (open).  If newwin is not None, it is
+    # used for new=1 (open_new).  If newtab is not None, it is used for
+    # new=3 (open_new_tab).  After both substitutions are made, any empty
+    # strings in the transformed remote_args list will be removed.
     remote_args = ['%action', '%s']
     remote_action = None
     remote_action_newwin = None
     remote_action_newtab = None
-    background = False
-    redirect_stdout = True
 
     def _invoke(self, args, remote, autoraise):
         raise_opt = []
@@ -223,19 +230,13 @@ class UnixBrowser(BaseBrowser):
         cmdline = [self.name] + raise_opt + args
 
         if remote or self.background:
-            inout = file(os.devnull, "r+")
+            inout = io.open(os.devnull, "r+")
         else:
             # for TTY browsers, we need stdin/out
             inout = None
-        # if possible, put browser in separate process group, so
-        # keyboard interrupts don't affect browser as well as Python
-        setsid = getattr(os, 'setsid', None)
-        if not setsid:
-            setsid = getattr(os, 'setpgrp', None)
-
         p = subprocess.Popen(cmdline, close_fds=True, stdin=inout,
                              stdout=(self.redirect_stdout and inout or None),
-                             stderr=inout, preexec_fn=setsid)
+                             stderr=inout, start_new_session=True)
         if remote:
             # wait five seconds. If the subprocess is not finished, the
             # remote invocation has (hopefully) started a new instance.
@@ -272,6 +273,7 @@ class UnixBrowser(BaseBrowser):
 
         args = [arg.replace("%s", url).replace("%action", action)
                 for arg in self.remote_args]
+        args = [arg for arg in args if arg]
         success = self._invoke(args, True, autoraise)
         if not success:
             # remote invocation failed, try straight way
@@ -304,25 +306,14 @@ class Galeon(UnixBrowser):
     background = True
 
 
-class Chrome(UnixBrowser):
-    "Launcher class for Google Chrome browser."
-
-    remote_args = ['%action', '%s']
-    remote_action = ""
-    remote_action_newwin = "--new-window"
-    remote_action_newtab = ""
-    background = True
-
-Chromium = Chrome
-
-
 class Opera(UnixBrowser):
     "Launcher class for Opera browser."
 
-    remote_args = ['%action', '%s']
+    raise_opts = ["-noraise", ""]
+    remote_args = ['-remote', 'openURL(%s%action)']
     remote_action = ""
-    remote_action_newwin = "--new-window"
-    remote_action_newtab = ""
+    remote_action_newwin = ",new-window"
+    remote_action_newtab = ",new-page"
     background = True
 
 
@@ -354,7 +345,7 @@ class Konqueror(BaseBrowser):
         else:
             action = "openURL"
 
-        devnull = file(os.devnull, "r+")
+        devnull = io.open(os.devnull, "r+")
         # if possible, put browser in separate process group, so
         # keyboard interrupts don't affect browser as well as Python
         setsid = getattr(os, 'setsid', None)
@@ -452,14 +443,6 @@ class Grail(BaseBrowser):
 
 def register_X_browsers():
 
-    # use xdg-open if around
-    if _iscommand("xdg-open"):
-        register("xdg-open", None, BackgroundBrowser("xdg-open"))
-
-    # The default GNOME3 browser
-    if "GNOME_DESKTOP_SESSION_ID" in os.environ and _iscommand("gvfs-open"):
-        register("gvfs-open", None, BackgroundBrowser("gvfs-open"))
-
     # The default GNOME browser
     if "GNOME_DESKTOP_SESSION_ID" in os.environ and _iscommand("gnome-open"):
         register("gnome-open", None, BackgroundBrowser("gnome-open"))
@@ -468,13 +451,9 @@ def register_X_browsers():
     if "KDE_FULL_SESSION" in os.environ and _iscommand("kfmclient"):
         register("kfmclient", Konqueror, Konqueror("kfmclient"))
 
-    if _iscommand("x-www-browser"):
-        register("x-www-browser", None, BackgroundBrowser("x-www-browser"))
-
     # The Mozilla/Netscape browsers
     for browser in ("mozilla-firefox", "firefox",
                     "mozilla-firebird", "firebird",
-                    "iceweasel", "iceape",
                     "seamonkey", "mozilla", "netscape"):
         if _iscommand(browser):
             register(browser, None, Mozilla(browser))
@@ -494,11 +473,6 @@ def register_X_browsers():
     if _iscommand("skipstone"):
         register("skipstone", None, BackgroundBrowser("skipstone"))
 
-    # Google Chrome/Chromium browsers
-    for browser in ("google-chrome", "chrome", "chromium", "chromium-browser"):
-        if _iscommand(browser):
-            register(browser, None, Chrome(browser))
-
     # Opera, quite popular
     if _iscommand("opera"):
         register("opera", None, Opera("opera"))
@@ -517,8 +491,6 @@ if os.environ.get("DISPLAY"):
 
 # Also try console browsers
 if os.environ.get("TERM"):
-    if _iscommand("www-browser"):
-        register("www-browser", None, GenericBrowser("www-browser"))
     # The Links/elinks browsers <http://artax.karlin.mff.cuni.cz/~mikulas/links/>
     if _iscommand("links"):
         register("links", None, GenericBrowser("links"))
@@ -641,7 +613,6 @@ if sys.platform == 'darwin':
     # (but we prefer using the OS X specific stuff)
     register("safari", None, MacOSXOSAScript('safari'), -1)
     register("firefox", None, MacOSXOSAScript('firefox'), -1)
-    register("chrome", None, MacOSXOSAScript('chrome'), -1)
     register("MacOSX", None, MacOSXOSAScript('default'), -1)
 
 
@@ -683,22 +654,22 @@ def main():
     -t: open new tab""" % sys.argv[0]
     try:
         opts, args = getopt.getopt(sys.argv[1:], 'ntd')
-    except getopt.error, msg:
-        print >>sys.stderr, msg
-        print >>sys.stderr, usage
+    except getopt.error as msg:
+        print(msg, file=sys.stderr)
+        print(usage, file=sys.stderr)
         sys.exit(1)
     new_win = 0
     for o, a in opts:
         if o == '-n': new_win = 1
         elif o == '-t': new_win = 2
     if len(args) != 1:
-        print >>sys.stderr, usage
+        print(usage, file=sys.stderr)
         sys.exit(1)
 
     url = args[0]
     open(url, new_win)
 
-    print "\a"
+    print("\a")
 
 if __name__ == "__main__":
     main()

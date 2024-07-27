@@ -21,7 +21,7 @@ specialty---writing code and creating source distributions---while an
 intermediary species called *packagers* springs up to turn source distributions
 into built distributions for as many platforms as there are packagers.
 
-Of course, the module developer could be their own packager; or the packager could
+Of course, the module developer could be his own packager; or the packager could
 be a volunteer "out there" somewhere who has access to a platform which the
 original developer does not; or it could be software periodically grabbing new
 source distributions and turning them into built distributions for as many
@@ -57,7 +57,7 @@ built distributions, such as an RPM package or an executable installer for
 Windows, is far more convenient for users even if your distribution doesn't
 include any extensions.
 
-The :command:`bdist` command has a :option:`!--formats` option, similar to the
+The :command:`bdist` command has a :option:`--formats` option, similar to the
 :command:`sdist` command, which you can use to select the types of built
 distribution to generate: for example, ::
 
@@ -115,7 +115,7 @@ Notes:
    requires external :program:`rpm` utility, version 3.0.4 or better (use ``rpm
    --version`` to find out which version you have)
 
-You don't have to use the :command:`bdist` command with the :option:`!--formats`
+You don't have to use the :command:`bdist` command with the :option:`--formats`
 option; you can also use the command that directly implements the format you're
 interested in.  Some of these :command:`bdist` "sub-commands" actually generate
 several similar formats; for instance, the :command:`bdist_dumb` command
@@ -139,13 +139,13 @@ The following sections give details on the individual :command:`bdist_\*`
 commands.
 
 
-.. _creating-dumb:
+.. .. _creating-dumb:
 
-Creating dumb built distributions
-=================================
+.. Creating dumb built distributions
+.. =================================
 
 .. XXX Need to document absolute vs. prefix-relative packages here, but first
-       I have to implement it!
+   I have to implement it!
 
 
 .. _creating-rpms:
@@ -165,7 +165,7 @@ The usual way to create an RPM of your module distribution is to run the
 
    python setup.py bdist_rpm
 
-or the :command:`bdist` command with the :option:`!--format` option::
+or the :command:`bdist` command with the :option:`--format` option::
 
    python setup.py bdist --formats=rpm
 
@@ -186,21 +186,21 @@ Distutils configuration files.  Various options and sections in the
 +------------------------------------------+----------------------------------------------+
 | RPM :file:`.spec` file option or section | Distutils setup script option                |
 +==========================================+==============================================+
-| Name                                     | ``name``                                     |
+| Name                                     | :option:`name`                               |
 +------------------------------------------+----------------------------------------------+
-| Summary (in preamble)                    | ``description``                              |
+| Summary (in preamble)                    | :option:`description`                        |
 +------------------------------------------+----------------------------------------------+
-| Version                                  | ``version``                                  |
+| Version                                  | :option:`version`                            |
 +------------------------------------------+----------------------------------------------+
-| Vendor                                   | ``author`` and ``author_email``,             |
-|                                          | or  --- & ``maintainer`` and                 |
-|                                          | ``maintainer_email``                         |
+| Vendor                                   | :option:`author` and :option:`author_email`, |
+|                                          | or  --- & :option:`maintainer` and           |
+|                                          | :option:`maintainer_email`                   |
 +------------------------------------------+----------------------------------------------+
-| Copyright                                | ``license``                                  |
+| Copyright                                | :option:`license`                            |
 +------------------------------------------+----------------------------------------------+
-| Url                                      | ``url``                                      |
+| Url                                      | :option:`url`                                |
 +------------------------------------------+----------------------------------------------+
-| %description (section)                   | ``long_description``                         |
+| %description (section)                   | :option:`long_description`                   |
 +------------------------------------------+----------------------------------------------+
 
 Additionally, there are many options in :file:`.spec` files that don't have
@@ -211,27 +211,27 @@ options to the :command:`bdist_rpm` command as follows:
 | RPM :file:`.spec` file option | :command:`bdist_rpm` option | default value           |
 | or section                    |                             |                         |
 +===============================+=============================+=========================+
-| Release                       | ``release``                 | "1"                     |
+| Release                       | :option:`release`           | "1"                     |
 +-------------------------------+-----------------------------+-------------------------+
-| Group                         | ``group``                   | "Development/Libraries" |
+| Group                         | :option:`group`             | "Development/Libraries" |
 +-------------------------------+-----------------------------+-------------------------+
-| Vendor                        | ``vendor``                  | (see above)             |
+| Vendor                        | :option:`vendor`            | (see above)             |
 +-------------------------------+-----------------------------+-------------------------+
-| Packager                      | ``packager``                | (none)                  |
+| Packager                      | :option:`packager`          | (none)                  |
 +-------------------------------+-----------------------------+-------------------------+
-| Provides                      | ``provides``                | (none)                  |
+| Provides                      | :option:`provides`          | (none)                  |
 +-------------------------------+-----------------------------+-------------------------+
-| Requires                      | ``requires``                | (none)                  |
+| Requires                      | :option:`requires`          | (none)                  |
 +-------------------------------+-----------------------------+-------------------------+
-| Conflicts                     | ``conflicts``               | (none)                  |
+| Conflicts                     | :option:`conflicts`         | (none)                  |
 +-------------------------------+-----------------------------+-------------------------+
-| Obsoletes                     | ``obsoletes``               | (none)                  |
+| Obsoletes                     | :option:`obsoletes`         | (none)                  |
 +-------------------------------+-----------------------------+-------------------------+
-| Distribution                  | ``distribution_name``       | (none)                  |
+| Distribution                  | :option:`distribution_name` | (none)                  |
 +-------------------------------+-----------------------------+-------------------------+
-| BuildRequires                 | ``build_requires``          | (none)                  |
+| BuildRequires                 | :option:`build_requires`    | (none)                  |
 +-------------------------------+-----------------------------+-------------------------+
-| Icon                          | ``icon``                    | (none)                  |
+| Icon                          | :option:`icon`              | (none)                  |
 +-------------------------------+-----------------------------+-------------------------+
 
 Obviously, supplying even a few of these options on the command-line would be
@@ -239,8 +239,7 @@ tedious and error-prone, so it's usually best to put them in the setup
 configuration file, :file:`setup.cfg`\ ---see section :ref:`setup-config`.  If
 you distribute or package many Python module distributions, you might want to
 put options that apply to all of them in your personal Distutils configuration
-file (:file:`~/.pydistutils.cfg`).  If you want to temporarily disable
-this file, you can pass the --no-user-cfg option to setup.py.
+file (:file:`~/.pydistutils.cfg`).
 
 There are three steps to building a binary RPM package, all of which are
 handled automatically by the Distutils:
@@ -258,10 +257,10 @@ Normally, RPM bundles the last two steps together; when you use the Distutils,
 all three steps are typically bundled together.
 
 If you wish, you can separate these three steps.  You can use the
-:option:`!--spec-only` option to make :command:`bdist_rpm` just create the
+:option:`--spec-only` option to make :command:`bdist_rpm` just create the
 :file:`.spec` file and exit; in this case, the :file:`.spec` file will be
 written to the "distribution directory"---normally :file:`dist/`, but
-customizable with the :option:`!--dist-dir` option.  (Normally, the :file:`.spec`
+customizable with the :option:`--dist-dir` option.  (Normally, the :file:`.spec`
 file winds up deep in the "build tree," in a temporary directory created by
 :command:`bdist_rpm`.)
 
@@ -298,7 +297,7 @@ is usually as easy as running::
 
    python setup.py bdist_wininst
 
-or the :command:`bdist` command with the :option:`!--formats` option::
+or the :command:`bdist` command with the :option:`--formats` option::
 
    python setup.py bdist --formats=wininst
 
@@ -316,20 +315,20 @@ support.
 The installer will try to compile pure modules into :term:`bytecode` after installation
 on the target system in normal and optimizing mode.  If you don't want this to
 happen for some reason, you can run the :command:`bdist_wininst` command with
-the :option:`!--no-target-compile` and/or the :option:`!--no-target-optimize`
+the :option:`--no-target-compile` and/or the :option:`--no-target-optimize`
 option.
 
 By default the installer will display the cool "Python Powered" logo when it is
 run, but you can also supply your own 152x261 bitmap which must be a Windows
-:file:`.bmp` file with the :option:`!--bitmap` option.
+:file:`.bmp` file with the :option:`--bitmap` option.
 
 The installer will also display a large title on the desktop background window
 when it is run, which is constructed from the name of your distribution and the
 version number.  This can be changed to another text by using the
-:option:`!--title` option.
+:option:`--title` option.
 
 The installer file will be written to the "distribution directory" --- normally
-:file:`dist/`, but customizable with the :option:`!--dist-dir` option.
+:file:`dist/`, but customizable with the :option:`--dist-dir` option.
 
 .. _cross-compile-windows:
 
@@ -341,7 +340,7 @@ Windows platforms.  In practice, this means that with the correct tools
 installed, you can use a 32bit version of Windows to create 64bit extensions
 and vice-versa.
 
-To build for an alternate platform, specify the :option:`!--plat-name` option
+To build for an alternate platform, specify the :option:`--plat-name` option
 to the build command.  Valid values are currently 'win32', 'win-amd64' and
 'win-ia64'.  For example, on a 32bit version of Windows, you could execute::
 
@@ -355,7 +354,7 @@ support this option, so the command::
 would create a 64bit installation executable on your 32bit version of Windows.
 
 To cross-compile, you must download the Python source code and cross-compile
-Python itself for the platform you are targeting - it is not possible from a
+Python itself for the platform you are targetting - it is not possible from a
 binary installation of Python (as the .lib etc file for other platforms are
 not included.)  In practice, this means the user of a 32 bit operating
 system will need to use Visual Studio 2008 to open the
@@ -374,14 +373,14 @@ The Postinstallation script
 ---------------------------
 
 Starting with Python 2.3, a postinstallation script can be specified with the
-:option:`!--install-script` option.  The basename of the script must be
+:option:`--install-script` option.  The basename of the script must be
 specified, and the script filename must also be listed in the scripts argument
 to the setup function.
 
 This script will be run at installation time on the target system after all the
-files have been copied, with ``argv[1]`` set to :option:`!-install`, and again at
+files have been copied, with ``argv[1]`` set to :option:`-install`, and again at
 uninstallation time before the files are removed with ``argv[1]`` set to
-:option:`!-remove`.
+:option:`-remove`.
 
 The installation script runs embedded in the windows installer, every output
 (``sys.stdout``, ``sys.stderr``) is redirected into a buffer and will be
@@ -444,7 +443,7 @@ built-in functions in the installation script.
 Vista User Access Control (UAC)
 ===============================
 
-Starting with Python 2.6, bdist_wininst supports a :option:`!--user-access-control`
+Starting with Python 2.6, bdist_wininst supports a :option:`--user-access-control`
 option.  The default is 'none' (meaning no UAC handling is done), and other
 valid values are 'auto' (meaning prompt for UAC elevation if Python was
 installed for all users) and 'force' (meaning always prompt for elevation).

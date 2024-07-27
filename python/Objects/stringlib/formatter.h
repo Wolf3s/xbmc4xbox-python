@@ -141,7 +141,7 @@ typedef struct {
 
 
 #if 0
-/* Occasionally useful for debugging. Should normally be commented out. */
+/* Occassionally useful for debugging. Should normally be commented out. */
 static void
 DEBUG_PRINT_FORMAT_SPEC(InternalFormatSpec *format)
 {
@@ -180,9 +180,8 @@ parse_internal_render_format_spec(STRINGLIB_CHAR *format_spec,
 
     Py_ssize_t consumed;
     int align_specified = 0;
-    int fill_char_specified = 0;
 
-    format->fill_char = ' ';
+    format->fill_char = '\0';
     format->align = default_align;
     format->alternate = 0;
     format->sign = '\0';
@@ -196,7 +195,6 @@ parse_internal_render_format_spec(STRINGLIB_CHAR *format_spec,
     if (end-ptr >= 2 && is_alignment_token(ptr[1])) {
         format->align = ptr[1];
         format->fill_char = ptr[0];
-        fill_char_specified = 1;
         align_specified = 1;
         ptr += 2;
     }
@@ -220,7 +218,7 @@ parse_internal_render_format_spec(STRINGLIB_CHAR *format_spec,
     }
 
     /* The special case for 0-padding (backwards compat) */
-    if (!fill_char_specified && end-ptr >= 1 && ptr[0] == '0') {
+    if (format->fill_char == '\0' && end-ptr >= 1 && ptr[0] == '0') {
         format->fill_char = '0';
         if (!align_specified) {
             format->align = '=';
@@ -416,7 +414,7 @@ parse_number(STRINGLIB_CHAR *ptr, Py_ssize_t len,
     STRINGLIB_CHAR *end = ptr + len;
     STRINGLIB_CHAR *remainder;
 
-    while (ptr<end && isdigit(*ptr))
+    while (ptr<end && Py_ISDIGIT(*ptr))
         ++ptr;
     remainder = ptr;
 
@@ -717,7 +715,8 @@ format_string_internal(PyObject *value, const InternalFormatSpec *format)
 
     /* Write into that space. First the padding. */
     p = fill_padding(STRINGLIB_STR(result), len,
-                     format->fill_char, lpad, rpad);
+                     format->fill_char=='\0'?' ':format->fill_char,
+                     lpad, rpad);
 
     /* Then the source string. */
     memcpy(p, STRINGLIB_STR(value), len * sizeof(STRINGLIB_CHAR));
@@ -775,21 +774,12 @@ format_int_or_long_internal(PyObject *value, const InternalFormatSpec *format,
             goto done;
         }
 
-        /* Error to specify a comma. */
-        if (format->thousands_separators) {
-            PyErr_SetString(PyExc_ValueError,
-                            "Thousands separators not allowed with integer"
-                            " format specifier 'c'");
-            goto done;
-        }
-
         /* taken from unicodeobject.c formatchar() */
         /* Integer input truncated to a character */
 /* XXX: won't work for int */
         x = PyLong_AsLong(value);
         if (x == -1 && PyErr_Occurred())
             goto done;
-#if STRINGLIB_IS_UNICODE
 #ifdef Py_UNICODE_WIDE
         if (x < 0 || x > 0x10ffff) {
             PyErr_SetString(PyExc_OverflowError,
@@ -802,13 +792,6 @@ format_int_or_long_internal(PyObject *value, const InternalFormatSpec *format,
             PyErr_SetString(PyExc_OverflowError,
                             "%c arg not in range(0x10000) "
                             "(narrow Python build)");
-            goto done;
-        }
-#endif
-#else
-        if (x < 0 || x > 0xff) {
-            PyErr_SetString(PyExc_OverflowError,
-                            "%c arg not in range(0x100)");
             goto done;
         }
 #endif
@@ -902,7 +885,8 @@ format_int_or_long_internal(PyObject *value, const InternalFormatSpec *format,
 
     /* Populate the memory. */
     fill_number(STRINGLIB_STR(result), &spec, pnumeric_chars, n_digits,
-                prefix, format->fill_char, &locale, format->type == 'X');
+                prefix, format->fill_char == '\0' ? ' ' : format->fill_char,
+                &locale, format->type == 'X');
 
 done:
     Py_XDECREF(tmp);
@@ -936,7 +920,7 @@ format_float_internal(PyObject *value,
     Py_ssize_t n_total;
     int has_decimal;
     double val;
-    Py_ssize_t precision;
+    Py_ssize_t precision = format->precision;
     Py_ssize_t default_precision = 6;
     STRINGLIB_CHAR type = format->type;
     int add_pct = 0;
@@ -955,26 +939,16 @@ format_float_internal(PyObject *value,
        from a hard-code pseudo-locale */
     LocaleInfo locale;
 
-    if (format->precision > INT_MAX) {
-        PyErr_SetString(PyExc_ValueError, "precision too big");
-        goto done;
-    }
-    precision = (int)format->precision;
-
-    /* Alternate is not allowed on floats. */
-    if (format->alternate) {
-        PyErr_SetString(PyExc_ValueError,
-                        "Alternate form (#) not allowed in float format "
-                        "specifier");
-        goto done;
-    }
+    if (format->alternate)
+        flags |= Py_DTSF_ALT;
 
     if (type == '\0') {
-        /* Omitted type specifier. This is like 'g' but with at least one
-           digit after the decimal point, and different default precision.*/
-        type = 'g';
-        default_precision = PyFloat_STR_PRECISION;
+        /* Omitted type specifier.  Behaves in the same way as repr(x)
+           and str(x) if no precision is given, else like 'g', but with
+           at least one digit after the decimal point. */
         flags |= Py_DTSF_ADD_DOT_0;
+        type = 'r';
+        default_precision = 0;
     }
 
     if (type == 'n')
@@ -994,8 +968,10 @@ format_float_internal(PyObject *value,
 
     if (precision < 0)
         precision = default_precision;
+    else if (type == 'r')
+        type = 'g';
 
-    /* Cast "type", because if we're in unicode we need to pass an
+    /* Cast "type", because if we're in unicode we need to pass a
        8-bit char. This is safe, because we've restricted what "type"
        can be. */
     buf = PyOS_double_to_string(val, (char)type, precision, flags,
@@ -1056,7 +1032,8 @@ format_float_internal(PyObject *value,
 
     /* Populate the memory. */
     fill_number(STRINGLIB_STR(result), &spec, p, n_digits, NULL,
-                format->fill_char, &locale, 0);
+                format->fill_char == '\0' ? ' ' : format->fill_char, &locale,
+                0);
 
 done:
     PyMem_Free(buf);
@@ -1091,7 +1068,7 @@ format_complex_internal(PyObject *value,
     Py_ssize_t n_im_total;
     int re_has_decimal;
     int im_has_decimal;
-    Py_ssize_t precision;
+    Py_ssize_t precision = format->precision;
     Py_ssize_t default_precision = 6;
     STRINGLIB_CHAR type = format->type;
     STRINGLIB_CHAR *p_re;
@@ -1120,21 +1097,7 @@ format_complex_internal(PyObject *value,
        from a hard-code pseudo-locale */
     LocaleInfo locale;
 
-    if (format->precision > INT_MAX) {
-        PyErr_SetString(PyExc_ValueError, "precision too big");
-        goto done;
-    }
-    precision = (int)format->precision;
-
-    /* Alternate is not allowed on complex. */
-    if (format->alternate) {
-        PyErr_SetString(PyExc_ValueError,
-                        "Alternate form (#) not allowed in complex format "
-                        "specifier");
-        goto done;
-    }
-
-    /* Neither is zero pading. */
+    /* Zero padding is not allowed. */
     if (format->fill_char == '0') {
         PyErr_SetString(PyExc_ValueError,
                         "Zero padding is not allowed in complex format "
@@ -1157,10 +1120,13 @@ format_complex_internal(PyObject *value,
     if (im == -1.0 && PyErr_Occurred())
         goto done;
 
+    if (format->alternate)
+        flags |= Py_DTSF_ALT;
+
     if (type == '\0') {
         /* Omitted type specifier. Should be like str(self). */
-        type = 'g';
-        default_precision = PyFloat_STR_PRECISION;
+        type = 'r';
+        default_precision = 0;
         if (re == 0.0 && copysign(1.0, re) == 1.0)
             skip_re = 1;
         else
@@ -1174,8 +1140,10 @@ format_complex_internal(PyObject *value,
 
     if (precision < 0)
         precision = default_precision;
+    else if (type == 'r')
+        type = 'g';
 
-    /* Cast "type", because if we're in unicode we need to pass an
+    /* Cast "type", because if we're in unicode we need to pass a
        8-bit char. This is safe, because we've restricted what "type"
        can be. */
     re_buf = PyOS_double_to_string(re, (char)type, precision, flags,
@@ -1272,7 +1240,8 @@ format_complex_internal(PyObject *value,
     /* Populate the memory. First, the padding. */
     p = fill_padding(STRINGLIB_STR(result),
                      n_re_total + n_im_total + 1 + add_parens * 2,
-                     format->fill_char, lpad, rpad);
+                     format->fill_char=='\0' ? ' ' : format->fill_char,
+                     lpad, rpad);
 
     if (add_parens)
         *p++ = '(';

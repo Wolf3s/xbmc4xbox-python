@@ -19,6 +19,12 @@
 Sockets
 =======
 
+Sockets are used nearly everywhere, but are one of the most severely
+misunderstood technologies around. This is a 10,000 foot overview of sockets.
+It's not really a tutorial - you'll still have work to do in getting things
+working. It doesn't cover the fine points (and there are a lot of them), but I
+hope it will give you enough background to begin using them decently.
+
 I'm only going to talk about INET sockets, but they account for at least 99% of
 the sockets in use. And I'll only talk about STREAM sockets - unless you really
 know what you're doing (in which case this HOWTO isn't for you!), you'll get
@@ -56,12 +62,10 @@ Creating a Socket
 Roughly speaking, when you clicked on the link that brought you to this page,
 your browser did something like the following::
 
-   #create an INET, STREAMing socket
-   s = socket.socket(
-       socket.AF_INET, socket.SOCK_STREAM)
-   #now connect to the web server on port 80
-   # - the normal http port
-   s.connect(("www.mcmillan-inc.com", 80))
+   # create an INET, STREAMing socket
+   s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+   # now connect to the web server on port 80 - the normal http port
+   s.connect(("www.python.org", 80))
 
 When the ``connect`` completes, the socket ``s`` can be used to send
 in a request for the text of the page. The same socket will read the
@@ -72,21 +76,17 @@ exchanges).
 What happens in the web server is a bit more complex. First, the web server
 creates a "server socket"::
 
-   #create an INET, STREAMing socket
-   serversocket = socket.socket(
-       socket.AF_INET, socket.SOCK_STREAM)
-   #bind the socket to a public host,
-   # and a well-known port
+   # create an INET, STREAMing socket
+   serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+   # bind the socket to a public host, and a well-known port
    serversocket.bind((socket.gethostname(), 80))
-   #become a server socket
+   # become a server socket
    serversocket.listen(5)
 
 A couple things to notice: we used ``socket.gethostname()`` so that the socket
-would be visible to the outside world.  If we had used ``s.bind(('localhost',
-80))`` or ``s.bind(('127.0.0.1', 80))`` we would still have a "server" socket,
-but one that was only visible within the same machine.  ``s.bind(('', 80))``
-specifies that the socket is reachable by any address the machine happens to
-have.
+would be visible to the outside world. If we had used ``s.bind(('', 80))`` or
+``s.bind(('localhost', 80))`` or ``s.bind(('127.0.0.1', 80))`` we would still
+have a "server" socket, but one that was only visible within the same machine.
 
 A second thing to note: low number ports are usually reserved for "well known"
 services (HTTP, SNMP etc). If you're playing around, use a nice high number (4
@@ -99,18 +99,18 @@ connections. If the rest of the code is written properly, that should be plenty.
 Now that we have a "server" socket, listening on port 80, we can enter the
 mainloop of the web server::
 
-   while 1:
-       #accept connections from outside
+   while True:
+       # accept connections from outside
        (clientsocket, address) = serversocket.accept()
-       #now do something with the clientsocket
-       #in this case, we'll pretend this is a threaded server
+       # now do something with the clientsocket
+       # in this case, we'll pretend this is a threaded server
        ct = client_thread(clientsocket)
        ct.run()
 
 There's actually 3 general ways in which this loop could work - dispatching a
 thread to handle ``clientsocket``, create a new process to handle
 ``clientsocket``, or restructure this app to use non-blocking sockets, and
-multiplex between our "server" socket and any active ``clientsocket``\ s using
+mulitplex between our "server" socket and any active ``clientsocket``\ s using
 ``select``. More about that later. The important thing to understand now is
 this: this is *all* a "server" socket does. It doesn't send any data. It doesn't
 receive any data. It just produces "client" sockets. Each ``clientsocket`` is
@@ -125,12 +125,13 @@ IPC
 ---
 
 If you need fast IPC between two processes on one machine, you should look into
-whatever form of shared memory the platform offers. A simple protocol based
-around shared memory and locks or semaphores is by far the fastest technique.
+pipes or shared memory.  If you do decide to use AF_INET sockets, bind the
+"server" socket to ``'localhost'``. On most platforms, this will take a
+shortcut around a couple of layers of network code and be quite a bit faster.
 
-If you do decide to use sockets, bind the "server" socket to ``'localhost'``. On
-most platforms, this will take a shortcut around a couple of layers of network
-code and be quite a bit faster.
+.. seealso::
+   The :mod:`multiprocessing` integrates cross-platform IPC into a higher-level
+   API.
 
 
 Using a Socket
@@ -184,16 +185,16 @@ Assuming you don't want to end the connection, the simplest solution is a fixed
 length message::
 
    class mysocket:
-       '''demonstration class only
+       """demonstration class only
          - coded for clarity, not efficiency
-       '''
+       """
 
        def __init__(self, sock=None):
            if sock is None:
                self.sock = socket.socket(
-                   socket.AF_INET, socket.SOCK_STREAM)
-           else:
-               self.sock = sock
+                               socket.AF_INET, socket.SOCK_STREAM)
+               else:
+                   self.sock = sock
 
        def connect(self, host, port):
            self.sock.connect((host, port))
@@ -207,15 +208,13 @@ length message::
                totalsent = totalsent + sent
 
        def myreceive(self):
-           chunks = []
-           bytes_recd = 0
-           while bytes_recd < MSGLEN:
-               chunk = self.sock.recv(min(MSGLEN - bytes_recd, 2048))
+           msg = ''
+           while len(msg) < MSGLEN:
+               chunk = self.sock.recv(MSGLEN-len(msg))
                if chunk == '':
                    raise RuntimeError("socket connection broken")
-               chunks.append(chunk)
-               bytes_recd = bytes_recd + len(chunk)
-           return ''.join(chunks)
+               msg = msg + chunk
+           return msg
 
 The sending code here is usable for almost any messaging scheme - in Python you
 send strings, and you can use ``len()`` to determine its length (even if it has
@@ -237,7 +236,7 @@ messages to be sent back to back (without some kind of reply), and you pass
 following message. You'll need to put that aside and hold onto it, until it's
 needed.
 
-Prefixing the message with its length (say, as 5 numeric characters) gets more
+Prefixing the message with it's length (say, as 5 numeric characters) gets more
 complex, because (believe it or not), you may not get all 5 characters in one
 ``recv``. In playing around, you'll get away with it; but in high network loads,
 your code will very quickly break unless you use two ``recv`` loops - the first
@@ -301,7 +300,7 @@ When Sockets Die
 
 Probably the worst thing about using blocking sockets is what happens when the
 other side comes down hard (without doing a ``close``). Your socket is likely to
-hang. SOCKSTREAM is a reliable protocol, and it will wait a long, long time
+hang. TCP is a reliable protocol, and it will wait a long, long time
 before giving up on a connection. If you're using threads, the entire thread is
 essentially dead. There's not much you can do about it. As long as you aren't
 doing something dumb, like holding a lock while doing a blocking read, the
@@ -396,19 +395,13 @@ Performance
 
 There's no question that the fastest sockets code uses non-blocking sockets and
 select to multiplex them. You can put together something that will saturate a
-LAN connection without putting any strain on the CPU. The trouble is that an app
-written this way can't do much of anything else - it needs to be ready to
-shuffle bytes around at all times.
+LAN connection without putting any strain on the CPU.
 
-Assuming that your app is actually supposed to do something more than that,
-threading is the optimal solution, (and using non-blocking sockets will be
-faster than using blocking sockets). Unfortunately, threading support in Unixes
-varies both in API and quality. So the normal Unix solution is to fork a
-subprocess to deal with each connection. The overhead for this is significant
-(and don't do this on Windows - the overhead of process creation is enormous
-there). It also means that unless each subprocess is completely independent,
-you'll need to use another form of IPC, say a pipe, or shared memory and
-semaphores, to communicate between the parent and child processes.
+The trouble is that an app written this way can't do much of anything else -
+it needs to be ready to shuffle bytes around at all times. Assuming that your
+app is actually supposed to do something more than that, threading is the
+optimal solution, (and using non-blocking sockets will be faster than using
+blocking sockets).
 
 Finally, remember that even though blocking sockets are somewhat slower than
 non-blocking, in many cases they are the "right" solution. After all, if your

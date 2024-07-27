@@ -1,14 +1,12 @@
-
 :mod:`stringprep` --- Internet String Preparation
 =================================================
 
 .. module:: stringprep
    :synopsis: String preparation, as per RFC 3453
+   :deprecated:
 .. moduleauthor:: Martin v. Löwis <martin@v.loewis.de>
 .. sectionauthor:: Martin v. Löwis <martin@v.loewis.de>
 
-
-.. versionadded:: 2.3
 
 When identifying things (such as host names) in the internet, it is often
 necessary to compare such identifications for "equality". Exactly how this

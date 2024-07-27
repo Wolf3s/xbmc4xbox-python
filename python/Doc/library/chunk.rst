@@ -1,4 +1,3 @@
-
 :mod:`chunk` --- Read IFF chunked data
 ======================================
 
@@ -48,16 +47,15 @@ Usually an IFF-type file consists of one or more chunks.  The proposed usage of
 the :class:`Chunk` class defined here is to instantiate an instance at the start
 of each chunk and read from the instance until it reaches the end, after which a
 new instance can be instantiated. At the end of the file, creating a new
-instance will fail with an :exc:`EOFError` exception.
+instance will fail with a :exc:`EOFError` exception.
 
 
-.. class:: Chunk(file[, align, bigendian, inclheader])
+.. class:: Chunk(file, align=True, bigendian=True, inclheader=False)
 
    Class which represents a chunk.  The *file* argument is expected to be a
    file-like object.  An instance of this class is specifically allowed.  The
-   only method that is needed is :meth:`~file.read`.  If the methods
-   :meth:`~file.seek` and :meth:`~file.tell` are present and don't
-   raise an exception, they are also used.
+   only method that is needed is :meth:`read`.  If the methods :meth:`seek` and
+   :meth:`tell` are present and don't raise an exception, they are also used.
    If these methods are present and raise an exception, they are expected to not
    have altered the object.  If the optional argument *align* is true, chunks
    are assumed to be aligned on 2-byte boundaries.  If *align* is false, no
@@ -95,7 +93,7 @@ instance will fail with an :exc:`EOFError` exception.
       Returns ``False``.
 
 
-   .. method:: seek(pos[, whence])
+   .. method:: seek(pos, whence=0)
 
       Set the chunk's current position.  The *whence* argument is optional and
       defaults to ``0`` (absolute file positioning); other values are ``1``
@@ -109,7 +107,7 @@ instance will fail with an :exc:`EOFError` exception.
       Return the current position into the chunk.
 
 
-   .. method:: read([size])
+   .. method:: read(size=-1)
 
       Read at most *size* bytes from the chunk (less if the read hits the end of
       the chunk before obtaining *size* bytes).  If the *size* argument is

@@ -1,5 +1,4 @@
 #include "Python.h"
-#include "pyarena.h"
 
 /* A simple arena block structure.
 
@@ -159,6 +158,7 @@ PyArena_New()
 void
 PyArena_Free(PyArena *arena)
 {
+    int r;
     assert(arena);
 #if defined(Py_DEBUG)
     /*
@@ -175,6 +175,12 @@ PyArena_Free(PyArena *arena)
     assert(arena->a_objects->ob_refcnt == 1);
     */
 
+    /* Clear all the elements from the list.  This is necessary
+       to guarantee that they will be DECREFed. */
+    r = PyList_SetSlice(arena->a_objects,
+                        0, PyList_GET_SIZE(arena->a_objects), NULL);
+    assert(r == 0);
+    assert(PyList_GET_SIZE(arena->a_objects) == 0);
     Py_DECREF(arena->a_objects);
     free(arena);
 }

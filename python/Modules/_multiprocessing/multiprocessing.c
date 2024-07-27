@@ -63,7 +63,7 @@ mp_SetError(PyObject *Type, int num)
         break;
     default:
         PyErr_Format(PyExc_RuntimeError,
-                     "unknown error number %d", num);
+                     "unkown error number %d", num);
     }
     return NULL;
 }
@@ -167,7 +167,7 @@ multiprocessing_recvfd(PyObject *self, PyObject *args)
     cmsg = CMSG_FIRSTHDR(&msg);
     cmsg->cmsg_level = SOL_SOCKET;
     cmsg->cmsg_type = SCM_RIGHTS;
-    cmsg->cmsg_len = CMSG_SPACE(sizeof(int));
+    cmsg->cmsg_len = CMSG_LEN(sizeof(int));
     msg.msg_controllen = cmsg->cmsg_len;
 
     Py_BEGIN_ALLOW_THREADS
@@ -241,20 +241,33 @@ static PyMethodDef module_methods[] = {
  * Initialize
  */
 
+static struct PyModuleDef multiprocessing_module = {
+    PyModuleDef_HEAD_INIT,
+    "_multiprocessing",
+    NULL,
+    -1,
+    module_methods,
+    NULL,
+    NULL,
+    NULL,
+    NULL
+};
+
+
 PyMODINIT_FUNC
-init_multiprocessing(void)
+PyInit__multiprocessing(void)
 {
     PyObject *module, *temp, *value;
 
     /* Initialize module */
-    module = Py_InitModule("_multiprocessing", module_methods);
+    module = PyModule_Create(&multiprocessing_module);
     if (!module)
-        return;
+        return NULL;
 
     /* Get copy of objects from pickle */
     temp = PyImport_ImportModule(PICKLE_MODULE);
     if (!temp)
-        return;
+        return NULL;
     pickle_dumps = PyObject_GetAttrString(temp, "dumps");
     pickle_loads = PyObject_GetAttrString(temp, "loads");
     pickle_protocol = PyObject_GetAttrString(temp, "HIGHEST_PROTOCOL");
@@ -263,13 +276,13 @@ init_multiprocessing(void)
     /* Get copy of BufferTooShort */
     temp = PyImport_ImportModule("multiprocessing");
     if (!temp)
-        return;
+        return NULL;
     BufferTooShort = PyObject_GetAttrString(temp, "BufferTooShort");
     Py_XDECREF(temp);
 
     /* Add connection type to module */
     if (PyType_Ready(&ConnectionType) < 0)
-        return;
+        return NULL;
     Py_INCREF(&ConnectionType);
     PyModule_AddObject(module, "Connection", (PyObject*)&ConnectionType);
 
@@ -277,7 +290,7 @@ init_multiprocessing(void)
   (defined(HAVE_SEM_OPEN) && !defined(POSIX_SEMAPHORES_NOT_ENABLED))
     /* Add SemLock type to module */
     if (PyType_Ready(&SemLockType) < 0)
-        return;
+        return NULL;
     Py_INCREF(&SemLockType);
     {
         PyObject *py_sem_value_max;
@@ -288,7 +301,7 @@ init_multiprocessing(void)
         else
             py_sem_value_max = PyLong_FromLong(SEM_VALUE_MAX);
         if (py_sem_value_max == NULL)
-            return;
+            return NULL;
         PyDict_SetItemString(SemLockType.tp_dict, "SEM_VALUE_MAX",
                              py_sem_value_max);
     }
@@ -298,7 +311,7 @@ init_multiprocessing(void)
 #ifdef MS_WINDOWS
     /* Add PipeConnection to module */
     if (PyType_Ready(&PipeConnectionType) < 0)
-        return;
+        return NULL;
     Py_INCREF(&PipeConnectionType);
     PyModule_AddObject(module, "PipeConnection",
                        (PyObject*)&PipeConnectionType);
@@ -306,30 +319,31 @@ init_multiprocessing(void)
     /* Initialize win32 class and add to multiprocessing */
     temp = create_win32_namespace();
     if (!temp)
-        return;
+        return NULL;
     PyModule_AddObject(module, "win32", temp);
 
     /* Initialize the event handle used to signal Ctrl-C */
     sigint_event = CreateEvent(NULL, TRUE, FALSE, NULL);
     if (!sigint_event) {
         PyErr_SetFromWindowsErr(0);
-        return;
+        return NULL;
     }
     if (!SetConsoleCtrlHandler(ProcessingCtrlHandler, TRUE)) {
         PyErr_SetFromWindowsErr(0);
-        return;
+        return NULL;
     }
 #endif
 
     /* Add configuration macros */
     temp = PyDict_New();
     if (!temp)
-        return;
+        return NULL;
+
 #define ADD_FLAG(name)                                            \
     value = Py_BuildValue("i", name);                             \
-    if (value == NULL) { Py_DECREF(temp); return; }               \
+    if (value == NULL) { Py_DECREF(temp); return NULL; }          \
     if (PyDict_SetItemString(temp, #name, value) < 0) {           \
-        Py_DECREF(temp); Py_DECREF(value); return; }              \
+        Py_DECREF(temp); Py_DECREF(value); return NULL; }                 \
     Py_DECREF(value)
 
 #if defined(HAVE_SEM_OPEN) && !defined(POSIX_SEMAPHORES_NOT_ENABLED)
@@ -347,6 +361,9 @@ init_multiprocessing(void)
 #ifdef HAVE_BROKEN_SEM_UNLINK
     ADD_FLAG(HAVE_BROKEN_SEM_UNLINK);
 #endif
+
     if (PyModule_AddObject(module, "flags", temp) < 0)
-        return;
+        return NULL;
+
+    return module;
 }

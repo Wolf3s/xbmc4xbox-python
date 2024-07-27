@@ -35,8 +35,7 @@ Here are the classes:
    *_maintype* is the :mailheader:`Content-Type` major type (e.g. :mimetype:`text`
    or :mimetype:`image`), and *_subtype* is the :mailheader:`Content-Type` minor
    type  (e.g. :mimetype:`plain` or :mimetype:`gif`).  *_params* is a parameter
-   key/value dictionary and is passed directly to :meth:`Message.add_header
-   <email.message.Message.add_header>`.
+   key/value dictionary and is passed directly to :meth:`Message.add_header`.
 
    The :class:`MIMEBase` class always adds a :mailheader:`Content-Type` header
    (based on *_maintype*, *_subtype*, and *_params*), and a
@@ -51,17 +50,14 @@ Here are the classes:
 
    A subclass of :class:`~email.mime.base.MIMEBase`, this is an intermediate base
    class for MIME messages that are not :mimetype:`multipart`.  The primary
-   purpose of this class is to prevent the use of the
-   :meth:`~email.message.Message.attach` method, which only makes sense for
-   :mimetype:`multipart` messages.  If :meth:`~email.message.Message.attach`
+   purpose of this class is to prevent the use of the :meth:`attach` method,
+   which only makes sense for :mimetype:`multipart` messages.  If :meth:`attach`
    is called, a :exc:`~email.errors.MultipartConversionError` exception is raised.
-
-   .. versionadded:: 2.2.2
 
 
 .. currentmodule:: email.mime.multipart
 
-.. class:: MIMEMultipart([_subtype[, boundary[, _subparts[, _params]]]])
+.. class:: MIMEMultipart(_subtype='mixed', boundary=None, _subparts=None, **_params)
 
    Module: :mod:`email.mime.multipart`
 
@@ -78,19 +74,16 @@ Here are the classes:
 
    *_subparts* is a sequence of initial subparts for the payload.  It must be
    possible to convert this sequence to a list.  You can always attach new subparts
-   to the message by using the :meth:`Message.attach
-   <email.message.Message.attach>` method.
+   to the message by using the :meth:`Message.attach` method.
 
    Additional parameters for the :mailheader:`Content-Type` header are taken from
    the keyword arguments, or passed into the *_params* argument, which is a keyword
    dictionary.
 
-   .. versionadded:: 2.2.2
-
 
 .. currentmodule:: email.mime.application
 
-.. class:: MIMEApplication(_data[, _subtype[, _encoder[, **_params]]])
+.. class:: MIMEApplication(_data, _subtype='octet-stream', _encoder=email.encoders.encode_base64, **_params)
 
    Module: :mod:`email.mime.application`
 
@@ -102,22 +95,18 @@ Here are the classes:
 
    Optional *_encoder* is a callable (i.e. function) which will perform the actual
    encoding of the data for transport.  This callable takes one argument, which is
-   the :class:`MIMEApplication` instance. It should use
-   :meth:`~email.message.Message.get_payload` and
-   :meth:`~email.message.Message.set_payload` to change the payload to encoded
-   form.  It should also add
+   the :class:`MIMEApplication` instance. It should use :meth:`get_payload` and
+   :meth:`set_payload` to change the payload to encoded form.  It should also add
    any :mailheader:`Content-Transfer-Encoding` or other headers to the message
    object as necessary.  The default encoding is base64.  See the
    :mod:`email.encoders` module for a list of the built-in encoders.
 
    *_params* are passed straight through to the base class constructor.
 
-   .. versionadded:: 2.5
-
 
 .. currentmodule:: email.mime.audio
 
-.. class:: MIMEAudio(_audiodata[, _subtype[, _encoder[, **_params]]])
+.. class:: MIMEAudio(_audiodata, _subtype=None, _encoder=email.encoders.encode_base64, **_params)
 
    Module: :mod:`email.mime.audio`
 
@@ -127,15 +116,13 @@ Here are the classes:
    this data can be decoded by the standard Python module :mod:`sndhdr`, then the
    subtype will be automatically included in the :mailheader:`Content-Type` header.
    Otherwise you can explicitly specify the audio subtype via the *_subtype*
-   parameter.  If the minor type could not be guessed and *_subtype* was not given,
+   argument.  If the minor type could not be guessed and *_subtype* was not given,
    then :exc:`TypeError` is raised.
 
    Optional *_encoder* is a callable (i.e. function) which will perform the actual
    encoding of the audio data for transport.  This callable takes one argument,
-   which is the :class:`MIMEAudio` instance. It should use
-   :meth:`~email.message.Message.get_payload` and
-   :meth:`~email.message.Message.set_payload` to change the payload to encoded
-   form.  It should also add
+   which is the :class:`MIMEAudio` instance. It should use :meth:`get_payload` and
+   :meth:`set_payload` to change the payload to encoded form.  It should also add
    any :mailheader:`Content-Transfer-Encoding` or other headers to the message
    object as necessary.  The default encoding is base64.  See the
    :mod:`email.encoders` module for a list of the built-in encoders.
@@ -145,7 +132,7 @@ Here are the classes:
 
 .. currentmodule:: email.mime.image
 
-.. class:: MIMEImage(_imagedata[, _subtype[, _encoder[, **_params]]])
+.. class:: MIMEImage(_imagedata, _subtype=None, _encoder=email.encoders.encode_base64, **_params)
 
    Module: :mod:`email.mime.image`
 
@@ -155,15 +142,13 @@ Here are the classes:
    this data can be decoded by the standard Python module :mod:`imghdr`, then the
    subtype will be automatically included in the :mailheader:`Content-Type` header.
    Otherwise you can explicitly specify the image subtype via the *_subtype*
-   parameter.  If the minor type could not be guessed and *_subtype* was not given,
+   argument.  If the minor type could not be guessed and *_subtype* was not given,
    then :exc:`TypeError` is raised.
 
    Optional *_encoder* is a callable (i.e. function) which will perform the actual
    encoding of the image data for transport.  This callable takes one argument,
-   which is the :class:`MIMEImage` instance. It should use
-   :meth:`~email.message.Message.get_payload` and
-   :meth:`~email.message.Message.set_payload` to change the payload to encoded
-   form.  It should also add
+   which is the :class:`MIMEImage` instance. It should use :meth:`get_payload` and
+   :meth:`set_payload` to change the payload to encoded form.  It should also add
    any :mailheader:`Content-Transfer-Encoding` or other headers to the message
    object as necessary.  The default encoding is base64.  See the
    :mod:`email.encoders` module for a list of the built-in encoders.
@@ -174,7 +159,7 @@ Here are the classes:
 
 .. currentmodule:: email.mime.message
 
-.. class:: MIMEMessage(_msg[, _subtype])
+.. class:: MIMEMessage(_msg, _subtype='rfc822')
 
    Module: :mod:`email.mime.message`
 
@@ -190,7 +175,7 @@ Here are the classes:
 
 .. currentmodule:: email.mime.text
 
-.. class:: MIMEText(_text[, _subtype[, _charset]])
+.. class:: MIMEText(_text, _subtype='plain', _charset='us-ascii')
 
    Module: :mod:`email.mime.text`
 
@@ -198,22 +183,17 @@ Here are the classes:
    :class:`MIMEText` class is used to create MIME objects of major type
    :mimetype:`text`. *_text* is the string for the payload.  *_subtype* is the
    minor type and defaults to :mimetype:`plain`.  *_charset* is the character
-   set of the text and is passed as a parameter to the
+   set of the text and is passed as an argument to the
    :class:`~email.mime.nonmultipart.MIMENonMultipart` constructor; it defaults
-   to ``us-ascii``.  If *_text* is unicode, it is encoded using the
-   *output_charset* of *_charset*, otherwise it is used as-is.
+   to ``us-ascii``.
 
-   .. versionchanged:: 2.4
-      The previously deprecated *_encoding* argument has been removed.  Content
-      Transfer Encoding now happens implicitly based on the *_charset*
-      argument.
-
-   Unless the ``_charset`` parameter is explicitly set to ``None``, the
+   Unless the *_charset* argument is explicitly set to ``None``, the
    MIMEText object created will have both a :mailheader:`Content-Type` header
-   with a ``charset`` parameter, and a :mailheader:`Content-Transfer-Encoding`
+   with a ``charset`` parameter, and a :mailheader:`Content-Transfer-Endcoding`
    header.  This means that a subsequent ``set_payload`` call will not result
    in an encoded payload, even if a charset is passed in the ``set_payload``
    command.  You can "reset" this behavior by deleting the
    ``Content-Transfer-Encoding`` header, after which a ``set_payload`` call
    will automatically encode the new payload (and add a new
    :mailheader:`Content-Transfer-Encoding` header).
+

@@ -33,8 +33,8 @@ const char *PyWin_DLLVersionString = dllVersionBuffer;
 typedef BOOL (WINAPI * PFN_GETCURRENTACTCTX)(HANDLE *);
 typedef BOOL (WINAPI * PFN_ACTIVATEACTCTX)(HANDLE, ULONG_PTR *);
 typedef BOOL (WINAPI * PFN_DEACTIVATEACTCTX)(DWORD, ULONG_PTR);
-typedef void (WINAPI * PFN_ADDREFACTCTX)(HANDLE);
-typedef void (WINAPI * PFN_RELEASEACTCTX)(HANDLE);
+typedef BOOL (WINAPI * PFN_ADDREFACTCTX)(HANDLE);
+typedef BOOL (WINAPI * PFN_RELEASEACTCTX)(HANDLE);
 
 // locals and function pointers for this activation context magic.
 static HANDLE PyWin_DLLhActivationContext = NULL; // one day it might be public
@@ -85,29 +85,25 @@ BOOL    WINAPI  DllMain (HANDLE hInst,
         case DLL_PROCESS_ATTACH:
             PyWin_DLLhModule = hInst;
             // 1000 is a magic number I picked out of the air.  Could do with a #define, I spose...
-            //LoadString(hInst, 1000, dllVersionBuffer, sizeof(dllVersionBuffer));
-            strcpy(dllVersionBuffer, "2.7.3"); // XBOX
+#ifdef _XBMC
+			strcpy(dllVersionBuffer, "2.4.1"); /* _XBOX */
+#else
+            LoadString(hInst, 1000, dllVersionBuffer, sizeof(dllVersionBuffer));
 
             // and capture our activation context for use when loading extensions.
-            /*
             _LoadActCtxPointers();
             if (pfnGetCurrentActCtx && pfnAddRefActCtx)
-                if ((*pfnGetCurrentActCtx)(&PyWin_DLLhActivationContext)) {
-                    (*pfnAddRefActCtx)(PyWin_DLLhActivationContext);
-                }
-                else {
-                    OutputDebugString("Python failed to load the default "
-                                      "activation context\n");
-                    return FALSE;
-                }
-            */
-            break;
+                if ((*pfnGetCurrentActCtx)(&PyWin_DLLhActivationContext))
+                    if (!(*pfnAddRefActCtx)(PyWin_DLLhActivationContext))
+                        OutputDebugString("Python failed to load the default activation context\n");
+#endif            
+			break;
 
         case DLL_PROCESS_DETACH:
-            /*
+#ifndef _XBOX
             if (pfnReleaseActCtx)
                 (*pfnReleaseActCtx)(PyWin_DLLhActivationContext);
-            */
+#endif
             break;
     }
     return TRUE;

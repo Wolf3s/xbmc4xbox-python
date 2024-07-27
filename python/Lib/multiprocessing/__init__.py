@@ -80,7 +80,6 @@ class TimeoutError(ProcessError):
 class AuthenticationError(ProcessError):
     pass
 
-# This is down here because _multiprocessing uses BufferTooShort
 import _multiprocessing
 
 #

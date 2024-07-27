@@ -47,43 +47,33 @@ Object Protocol
    Generic attribute getter function that is meant to be put into a type
    object's ``tp_getattro`` slot.  It looks for a descriptor in the dictionary
    of classes in the object's MRO as well as an attribute in the object's
-   :attr:`~object.__dict__` (if present).  As outlined in :ref:`descriptors`,
-   data descriptors take preference over instance attributes, while non-data
+   :attr:`__dict__` (if present).  As outlined in :ref:`descriptors`, data
+   descriptors take preference over instance attributes, while non-data
    descriptors don't.  Otherwise, an :exc:`AttributeError` is raised.
 
 
 .. c:function:: int PyObject_SetAttr(PyObject *o, PyObject *attr_name, PyObject *v)
 
    Set the value of the attribute named *attr_name*, for object *o*, to the value
-   *v*. Raise an exception and return ``-1`` on failure;
-   return ``0`` on success.  This is the equivalent of the Python statement
+   *v*. Returns ``-1`` on failure.  This is the equivalent of the Python statement
    ``o.attr_name = v``.
-
-   If *v* is *NULL*, the attribute is deleted, however this feature is
-   deprecated in favour of using :c:func:`PyObject_DelAttr`.
 
 
 .. c:function:: int PyObject_SetAttrString(PyObject *o, const char *attr_name, PyObject *v)
 
    Set the value of the attribute named *attr_name*, for object *o*, to the value
-   *v*. Raise an exception and return ``-1`` on failure;
-   return ``0`` on success.  This is the equivalent of the Python statement
+   *v*. Returns ``-1`` on failure.  This is the equivalent of the Python statement
    ``o.attr_name = v``.
-
-   If *v* is *NULL*, the attribute is deleted, however this feature is
-   deprecated in favour of using :c:func:`PyObject_DelAttrString`.
 
 
 .. c:function:: int PyObject_GenericSetAttr(PyObject *o, PyObject *name, PyObject *value)
 
-   Generic attribute setter and deleter function that is meant
-   to be put into a type object's :c:member:`~PyTypeObject.tp_setattro`
-   slot.  It looks for a data descriptor in the
+   Generic attribute setter function that is meant to be put into a type
+   object's ``tp_setattro`` slot.  It looks for a data descriptor in the
    dictionary of classes in the object's MRO, and if found it takes preference
-   over setting or deleting the attribute in the instance dictionary. Otherwise, the
-   attribute is set or deleted in the object's :attr:`~object.__dict__` (if present).
-   On success, ``0`` is returned, otherwise an :exc:`AttributeError`
-   is raised and ``-1`` is returned.
+   over setting the attribute in the instance dictionary. Otherwise, the
+   attribute is set in the object's :attr:`__dict__` (if present).  Otherwise,
+   an :exc:`AttributeError` is raised and ``-1`` is returned.
 
 
 .. c:function:: int PyObject_DelAttr(PyObject *o, PyObject *attr_name)
@@ -122,35 +112,24 @@ Object Protocol
    If *o1* and *o2* are the same object, :c:func:`PyObject_RichCompareBool`
    will always return ``1`` for :const:`Py_EQ` and ``0`` for :const:`Py_NE`.
 
-.. c:function:: int PyObject_Cmp(PyObject *o1, PyObject *o2, int *result)
-
-   .. index:: builtin: cmp
-
-   Compare the values of *o1* and *o2* using a routine provided by *o1*, if one
-   exists, otherwise with a routine provided by *o2*.  The result of the comparison
-   is returned in *result*.  Returns ``-1`` on failure.  This is the equivalent of
-   the Python statement ``result = cmp(o1, o2)``.
-
-
-.. c:function:: int PyObject_Compare(PyObject *o1, PyObject *o2)
-
-   .. index:: builtin: cmp
-
-   Compare the values of *o1* and *o2* using a routine provided by *o1*, if one
-   exists, otherwise with a routine provided by *o2*.  Returns the result of the
-   comparison on success.  On error, the value returned is undefined; use
-   :c:func:`PyErr_Occurred` to detect an error.  This is equivalent to the Python
-   expression ``cmp(o1, o2)``.
-
-
 .. c:function:: PyObject* PyObject_Repr(PyObject *o)
 
    .. index:: builtin: repr
 
    Compute a string representation of object *o*.  Returns the string
    representation on success, *NULL* on failure.  This is the equivalent of the
-   Python expression ``repr(o)``.  Called by the :func:`repr` built-in function and
-   by reverse quotes.
+   Python expression ``repr(o)``.  Called by the :func:`repr` built-in function.
+
+
+.. c:function:: PyObject* PyObject_ASCII(PyObject *o)
+
+   .. index:: builtin: ascii
+
+   As :c:func:`PyObject_Repr`, compute a string representation of object *o*, but
+   escape the non-ASCII characters in the string returned by
+   :c:func:`PyObject_Repr` with ``\x``, ``\u`` or ``\U`` escapes.  This generates
+   a string similar to that returned by :c:func:`PyObject_Repr` in Python 2.
+   Called by the :func:`ascii` built-in function.
 
 
 .. c:function:: PyObject* PyObject_Str(PyObject *o)
@@ -159,27 +138,18 @@ Object Protocol
 
    Compute a string representation of object *o*.  Returns the string
    representation on success, *NULL* on failure.  This is the equivalent of the
-   Python expression ``str(o)``.  Called by the :func:`str` built-in function and
-   by the :keyword:`print` statement.
-
+   Python expression ``str(o)``.  Called by the :func:`str` built-in function
+   and, therefore, by the :func:`print` function.
 
 .. c:function:: PyObject* PyObject_Bytes(PyObject *o)
 
    .. index:: builtin: bytes
 
-   Compute a bytes representation of object *o*.  In 2.x, this is just an alias
-   for :c:func:`PyObject_Str`.
-
-
-.. c:function:: PyObject* PyObject_Unicode(PyObject *o)
-
-   .. index:: builtin: unicode
-
-   Compute a Unicode string representation of object *o*.  Returns the Unicode
-   string representation on success, *NULL* on failure. This is the equivalent of
-   the Python expression ``unicode(o)``.  Called by the :func:`unicode` built-in
-   function.
-
+   Compute a bytes representation of object *o*.  *NULL* is returned on
+   failure and a bytes object on success.  This is equivalent to the Python
+   expression ``bytes(o)``, when *o* is not an integer.  Unlike ``bytes(o)``,
+   a TypeError is raised when *o* is an integer instead of a zero-initialized
+   bytes object.
 
 .. c:function:: int PyObject_IsInstance(PyObject *inst, PyObject *cls)
 
@@ -190,14 +160,10 @@ Object Protocol
    be done against every entry in *cls*. The result will be ``1`` when at least one
    of the checks returns ``1``, otherwise it will be ``0``. If *inst* is not a
    class instance and *cls* is neither a type object, nor a class object, nor a
-   tuple, *inst* must have a :attr:`~instance.__class__` attribute --- the
-   class relationship of the value of that attribute with *cls* will be used
-   to determine the result of this function.
+   tuple, *inst* must have a :attr:`__class__` attribute --- the class relationship
+   of the value of that attribute with *cls* will be used to determine the result
+   of this function.
 
-   .. versionadded:: 2.1
-
-   .. versionchanged:: 2.2
-      Support for a tuple as the second argument added.
 
 Subclass determination is done in a fairly straightforward way, but includes a
 wrinkle that implementors of extensions to the class system may want to be aware
@@ -206,9 +172,9 @@ of.  If :class:`A` and :class:`B` are class objects, :class:`B` is a subclass of
 either is not a class object, a more general mechanism is used to determine the
 class relationship of the two objects.  When testing if *B* is a subclass of
 *A*, if *A* is *B*, :c:func:`PyObject_IsSubclass` returns true.  If *A* and *B*
-are different objects, *B*'s :attr:`~class.__bases__` attribute is searched in
-a depth-first fashion for *A* --- the presence of the :attr:`~class.__bases__`
-attribute is considered sufficient for this determination.
+are different objects, *B*'s :attr:`__bases__` attribute is searched in a
+depth-first fashion for *A* --- the presence of the :attr:`__bases__` attribute
+is considered sufficient for this determination.
 
 
 .. c:function:: int PyObject_IsSubclass(PyObject *derived, PyObject *cls)
@@ -220,11 +186,6 @@ attribute is considered sufficient for this determination.
    ``0``. If either *derived* or *cls* is not an actual class object (or tuple),
    this function uses the generic algorithm described above.
 
-   .. versionadded:: 2.1
-
-   .. versionchanged:: 2.3
-      Older versions of Python did not support a tuple as the second argument.
-
 
 .. c:function:: int PyCallable_Check(PyObject *o)
 
@@ -234,40 +195,31 @@ attribute is considered sufficient for this determination.
 
 .. c:function:: PyObject* PyObject_Call(PyObject *callable_object, PyObject *args, PyObject *kw)
 
-   .. index:: builtin: apply
-
    Call a callable Python object *callable_object*, with arguments given by the
    tuple *args*, and named arguments given by the dictionary *kw*. If no named
    arguments are needed, *kw* may be *NULL*. *args* must not be *NULL*, use an
    empty tuple if no arguments are needed. Returns the result of the call on
    success, or *NULL* on failure.  This is the equivalent of the Python expression
-   ``apply(callable_object, args, kw)`` or ``callable_object(*args, **kw)``.
-
-   .. versionadded:: 2.2
+   ``callable_object(*args, **kw)``.
 
 
 .. c:function:: PyObject* PyObject_CallObject(PyObject *callable_object, PyObject *args)
 
-   .. index:: builtin: apply
-
    Call a callable Python object *callable_object*, with arguments given by the
    tuple *args*.  If no arguments are needed, then *args* may be *NULL*.  Returns
    the result of the call on success, or *NULL* on failure.  This is the equivalent
-   of the Python expression ``apply(callable_object, args)`` or
-   ``callable_object(*args)``.
+   of the Python expression ``callable_object(*args)``.
 
 
 .. c:function:: PyObject* PyObject_CallFunction(PyObject *callable, char *format, ...)
-
-   .. index:: builtin: apply
 
    Call a callable Python object *callable*, with a variable number of C arguments.
    The C arguments are described using a :c:func:`Py_BuildValue` style format
    string.  The format may be *NULL*, indicating that no arguments are provided.
    Returns the result of the call on success, or *NULL* on failure.  This is the
-   equivalent of the Python expression ``apply(callable, args)`` or
-   ``callable(*args)``. Note that if you only pass :c:type:`PyObject \*` args,
-   :c:func:`PyObject_CallFunctionObjArgs` is a faster alternative.
+   equivalent of the Python expression ``callable(*args)``. Note that if you only
+   pass :c:type:`PyObject \*` args, :c:func:`PyObject_CallFunctionObjArgs` is a
+   faster alternative.
 
 
 .. c:function:: PyObject* PyObject_CallMethod(PyObject *o, char *method, char *format, ...)
@@ -288,8 +240,6 @@ attribute is considered sufficient for this determination.
    of parameters followed by *NULL*. Returns the result of the call on success, or
    *NULL* on failure.
 
-   .. versionadded:: 2.2
-
 
 .. c:function:: PyObject* PyObject_CallMethodObjArgs(PyObject *o, PyObject *name, ..., NULL)
 
@@ -299,25 +249,25 @@ attribute is considered sufficient for this determination.
    of parameters followed by *NULL*. Returns the result of the call on success, or
    *NULL* on failure.
 
-   .. versionadded:: 2.2
 
-
-.. c:function:: long PyObject_Hash(PyObject *o)
+.. c:function:: Py_hash_t PyObject_Hash(PyObject *o)
 
    .. index:: builtin: hash
 
    Compute and return the hash value of an object *o*.  On failure, return ``-1``.
    This is the equivalent of the Python expression ``hash(o)``.
 
+   .. versionchanged:: 3.2
+      The return type is now Py_hash_t.  This is a signed integer the same size
+      as Py_ssize_t.
 
-.. c:function:: long PyObject_HashNotImplemented(PyObject *o)
+
+.. c:function:: Py_hash_t PyObject_HashNotImplemented(PyObject *o)
 
    Set a :exc:`TypeError` indicating that ``type(o)`` is not hashable and return ``-1``.
    This function receives special treatment when stored in a ``tp_hash`` slot,
    allowing a type to explicitly indicate to the interpreter that it is not
    hashable.
-
-   .. versionadded:: 2.6
 
 
 .. c:function:: int PyObject_IsTrue(PyObject *o)
@@ -352,8 +302,6 @@ attribute is considered sufficient for this determination.
    Return true if the object *o* is of type *type* or a subtype of *type*.  Both
    parameters must be non-*NULL*.
 
-   .. versionadded:: 2.2
-
 
 .. c:function:: Py_ssize_t PyObject_Length(PyObject *o)
                Py_ssize_t PyObject_Size(PyObject *o)
@@ -364,10 +312,6 @@ attribute is considered sufficient for this determination.
    and mapping protocols, the sequence length is returned.  On error, ``-1`` is
    returned.  This is the equivalent to the Python expression ``len(o)``.
 
-   .. versionchanged:: 2.5
-      These functions returned an :c:type:`int` type. This might require
-      changes in your code for properly supporting 64-bit systems.
-
 
 .. c:function:: PyObject* PyObject_GetItem(PyObject *o, PyObject *key)
 
@@ -377,8 +321,7 @@ attribute is considered sufficient for this determination.
 
 .. c:function:: int PyObject_SetItem(PyObject *o, PyObject *key, PyObject *v)
 
-   Map the object *key* to the value *v*.  Raise an exception and
-   return ``-1`` on failure; return ``0`` on success.  This is the
+   Map the object *key* to the value *v*.  Returns ``-1`` on failure.  This is the
    equivalent of the Python statement ``o[key] = v``.
 
 
@@ -386,14 +329,6 @@ attribute is considered sufficient for this determination.
 
    Delete the mapping for *key* from *o*.  Returns ``-1`` on failure. This is the
    equivalent of the Python statement ``del o[key]``.
-
-
-.. c:function:: int PyObject_AsFileDescriptor(PyObject *o)
-
-   Derives a file descriptor from a Python object.  If the object is an integer or
-   long integer, its value is returned.  If not, the object's :meth:`fileno` method
-   is called if it exists; the method must return an integer or long integer, which
-   is returned as the file descriptor value.  Returns ``-1`` on failure.
 
 
 .. c:function:: PyObject* PyObject_Dir(PyObject *o)

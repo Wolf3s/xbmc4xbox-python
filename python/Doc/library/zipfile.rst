@@ -6,8 +6,6 @@
 .. moduleauthor:: James C. Ahlstrom <jim@interet.com>
 .. sectionauthor:: James C. Ahlstrom <jim@interet.com>
 
-.. versionadded:: 1.6
-
 **Source code:** :source:`Lib/zipfile.py`
 
 --------------
@@ -15,7 +13,8 @@
 The ZIP file format is a common archive and compression standard. This module
 provides tools to create, read, write, append, and list a ZIP file.  Any
 advanced use of this module will require an understanding of the format, as
-defined in `PKZIP Application Note`_.
+defined in `PKZIP Application Note
+<http://www.pkware.com/documents/casestudies/APPNOTE.TXT>`_.
 
 This module does not currently handle multi-disk ZIP files.
 It can handle ZIP files that use the ZIP64 extensions
@@ -26,9 +25,18 @@ implemented in native Python rather than C.
 
 The module defines the following items:
 
+.. exception:: BadZipFile
+
+   The error raised for bad ZIP files.
+
+   .. versionadded:: 3.2
+
+
 .. exception:: BadZipfile
 
-   The error raised for bad ZIP files (old name: ``zipfile.error``).
+   Alias of :exc:`BadZipFile`, for compatibility with older Python versions.
+
+   .. deprecated:: 3.2
 
 
 .. exception:: LargeZipFile
@@ -45,11 +53,12 @@ The module defines the following items:
 
 
 .. class:: PyZipFile
+   :noindex:
 
    Class for creating ZIP archives containing Python libraries.
 
 
-.. class:: ZipInfo([filename[, date_time]])
+.. class:: ZipInfo(filename='NoName', date_time=(1980,1,1,0,0,0))
 
    Class used to represent information about a member of an archive. Instances
    of this class are returned by the :meth:`.getinfo` and :meth:`.infolist`
@@ -66,8 +75,9 @@ The module defines the following items:
    Returns ``True`` if *filename* is a valid ZIP file based on its magic number,
    otherwise returns ``False``.  *filename* may be a file or file-like object too.
 
-   .. versionchanged:: 2.7
+   .. versionchanged:: 3.1
       Support for file and file-like objects.
+
 
 .. data:: ZIP_STORED
 
@@ -82,7 +92,7 @@ The module defines the following items:
 
 .. seealso::
 
-   `PKZIP Application Note`_
+   `PKZIP Application Note <http://www.pkware.com/documents/casestudies/APPNOTE.TXT>`_
       Documentation on the ZIP file format by Phil Katz, the creator of the format and
       algorithms used.
 
@@ -97,7 +107,7 @@ ZipFile Objects
 ---------------
 
 
-.. class:: ZipFile(file[, mode[, compression[, allowZip64]]])
+.. class:: ZipFile(file, mode='r', compression=ZIP_STORED, allowZip64=False)
 
    Open a ZIP file, where *file* can be either a path to a file (a string) or a
    file-like object.  The *mode* parameter should be ``'r'`` to read an existing
@@ -105,11 +115,8 @@ ZipFile Objects
    existing file.  If *mode* is ``'a'`` and *file* refers to an existing ZIP
    file, then additional files are added to it.  If *file* does not refer to a
    ZIP file, then a new ZIP archive is appended to the file.  This is meant for
-   adding a ZIP archive to another file (such as :file:`python.exe`).
-
-   .. versionchanged:: 2.6
-      If *mode* is ``a`` and the file does not exist at all, it is created.
-
+   adding a ZIP archive to another file (such as :file:`python.exe`).  If
+   *mode* is ``a`` and the file does not exist at all, it is created.
    *compression* is the ZIP compression method to use when writing the archive,
    and should be :const:`ZIP_STORED` or :const:`ZIP_DEFLATED`; unrecognized
    values will cause :exc:`RuntimeError` to be raised.  If :const:`ZIP_DEFLATED`
@@ -122,10 +129,9 @@ ZipFile Objects
    and :program:`unzip` commands on Unix (the InfoZIP utilities) don't support
    these extensions.
 
-   .. versionchanged:: 2.7.1
-      If the file is created with mode ``'a'`` or ``'w'`` and then
-      :meth:`closed <close>` without adding any files to the archive, the appropriate
-      ZIP structures for an empty archive will be written to the file.
+   If the file is created with mode ``'a'`` or ``'w'`` and then
+   :meth:`closed <close>` without adding any files to the archive, the appropriate
+   ZIP structures for an empty archive will be written to the file.
 
    ZipFile is also a context manager and therefore supports the
    :keyword:`with` statement.  In the example, *myzip* is closed after the
@@ -134,7 +140,7 @@ ZipFile Objects
       with ZipFile('spam.zip', 'w') as myzip:
           myzip.write('eggs.txt')
 
-   .. versionadded:: 2.7
+   .. versionadded:: 3.2
       Added the ability to use :class:`ZipFile` as a context manager.
 
 
@@ -162,26 +168,25 @@ ZipFile Objects
 
    Return a list of archive members by name.
 
-   .. index::
-      single: universal newlines; zipfile.ZipFile.open method
 
+.. index::
+   single: universal newlines; zipfile.ZipFile.open method
 
-.. method:: ZipFile.open(name[, mode[, pwd]])
+.. method:: ZipFile.open(name, mode='r', pwd=None)
 
-   Extract a member from the archive as a file-like object (ZipExtFile). *name* is
-   the name of the file in the archive, or a :class:`ZipInfo` object. The *mode*
-   parameter, if included, must be one of the following: ``'r'`` (the default),
-   ``'U'``, or ``'rU'``. Choosing ``'U'`` or  ``'rU'`` will enable
-   :term:`universal newline <universal newlines>`
-   support in the read-only object. *pwd* is the password used for encrypted files.
-   Calling  :meth:`.open` on a closed ZipFile will raise a  :exc:`RuntimeError`.
+   Extract a member from the archive as a file-like object (ZipExtFile). *name*
+   is the name of the file in the archive, or a :class:`ZipInfo` object. The
+   *mode* parameter, if included, must be one of the following: ``'r'`` (the
+   default), ``'U'``, or ``'rU'``. Choosing ``'U'`` or  ``'rU'`` will enable
+   :term:`universal newlines` support in the read-only object.  *pwd* is the
+   password used for encrypted files.  Calling  :meth:`.open` on a closed
+   ZipFile will raise a  :exc:`RuntimeError`.
 
    .. note::
 
       The file-like object is read-only and provides the following methods:
-      :meth:`~file.read`, :meth:`~file.readline`,
-      :meth:`~file.readlines`, :meth:`__iter__`,
-      :meth:`~object.next`.
+      :meth:`!read`, :meth:`!readline`, :meth:`!readlines`, :meth:`!__iter__`,
+      :meth:`!__next__`.
 
    .. note::
 
@@ -200,20 +205,14 @@ ZipFile Objects
       or a :class:`ZipInfo` object.  You will appreciate this when trying to read a
       ZIP file that contains members with duplicate names.
 
-   .. versionadded:: 2.6
 
-
-.. method:: ZipFile.extract(member[, path[, pwd]])
+.. method:: ZipFile.extract(member, path=None, pwd=None)
 
    Extract a member from the archive to the current working directory; *member*
    must be its full name or a :class:`ZipInfo` object).  Its file information is
    extracted as accurately as possible.  *path* specifies a different directory
    to extract to.  *member* can be a filename or a :class:`ZipInfo` object.
    *pwd* is the password used for encrypted files.
-
-   Returns the normalized path created (a directory or new file).
-
-   .. versionadded:: 2.6
 
    .. note::
 
@@ -226,7 +225,7 @@ ZipFile Objects
       replaced by underscore (``_``).
 
 
-.. method:: ZipFile.extractall([path[, members[, pwd]]])
+.. method:: ZipFile.extractall(path=None, members=None, pwd=None)
 
    Extract all members from the archive to the current working directory.  *path*
    specifies a different directory to extract to.  *members* is optional and must
@@ -240,10 +239,8 @@ ZipFile Objects
       that have absolute filenames starting with ``"/"`` or filenames with two
       dots ``".."``.
 
-   .. versionchanged:: 2.7.4
+   .. versionchanged:: 3.2.4
       The zipfile module attempts to prevent that.  See :meth:`extract` note.
-
-   .. versionadded:: 2.6
 
 
 .. method:: ZipFile.printdir()
@@ -255,19 +252,14 @@ ZipFile Objects
 
    Set *pwd* as default password to extract encrypted files.
 
-   .. versionadded:: 2.6
 
-
-.. method:: ZipFile.read(name[, pwd])
+.. method:: ZipFile.read(name, pwd=None)
 
    Return the bytes of the file *name* in the archive.  *name* is the name of the
    file in the archive, or a :class:`ZipInfo` object.  The archive must be open for
    read or append. *pwd* is the password used for encrypted  files and, if specified,
    it will override the default password set with :meth:`setpassword`.  Calling
    :meth:`read` on a closed ZipFile  will raise a :exc:`RuntimeError`.
-
-   .. versionchanged:: 2.6
-      *pwd* was added, and *name* can now be a :class:`ZipInfo` object.
 
 
 .. method:: ZipFile.testzip()
@@ -277,7 +269,7 @@ ZipFile Objects
    :meth:`testzip` on a closed ZipFile will raise a :exc:`RuntimeError`.
 
 
-.. method:: ZipFile.write(filename[, arcname[, compress_type]])
+.. method:: ZipFile.write(filename, arcname=None, compress_type=None)
 
    Write the file named *filename* to the archive, giving it the archive name
    *arcname* (by default, this will be the same as *filename*, but without a drive
@@ -327,7 +319,7 @@ ZipFile Objects
       member of the given :class:`ZipInfo` instance.  By default, the
       :class:`ZipInfo` constructor sets this member to :const:`ZIP_STORED`.
 
-   .. versionchanged:: 2.7
+   .. versionchanged:: 3.2
       The *compress_type* argument.
 
 The following data attributes are also available:
@@ -344,7 +336,8 @@ The following data attributes are also available:
    The comment text associated with the ZIP file.  If assigning a comment to a
    :class:`ZipFile` instance created with mode 'a' or 'w', this should be a
    string no longer than 65535 bytes.  Comments longer than this will be
-   truncated in the written archive when :meth:`.close` is called.
+   truncated in the written archive when :meth:`close` is called.
+
 
 .. _pyzipfile-objects:
 
@@ -352,31 +345,46 @@ PyZipFile Objects
 -----------------
 
 The :class:`PyZipFile` constructor takes the same parameters as the
-:class:`ZipFile` constructor.  Instances have one method in addition to those of
-:class:`ZipFile` objects.
+:class:`ZipFile` constructor, and one additional parameter, *optimize*.
 
+.. class:: PyZipFile(file, mode='r', compression=ZIP_STORED, allowZip64=False, \
+                     optimize=-1)
 
-.. method:: PyZipFile.writepy(pathname[, basename])
+   .. versionadded:: 3.2
+      The *optimize* parameter.
 
-   Search for files :file:`\*.py` and add the corresponding file to the archive.
-   The corresponding file is a :file:`\*.pyo` file if available, else a
-   :file:`\*.pyc` file, compiling if necessary.  If the pathname is a file, the
-   filename must end with :file:`.py`, and just the (corresponding
-   :file:`\*.py[co]`) file is added at the top level (no path information).  If the
-   pathname is a file that does not end with :file:`.py`, a :exc:`RuntimeError`
-   will be raised.  If it is a directory, and the directory is not a package
-   directory, then all the files :file:`\*.py[co]` are added at the top level.  If
-   the directory is a package directory, then all :file:`\*.py[co]` are added under
-   the package name as a file path, and if any subdirectories are package
-   directories, all of these are added recursively.  *basename* is intended for
-   internal use only.  The :meth:`writepy` method makes archives with file names
-   like this::
+   Instances have one method in addition to those of :class:`ZipFile` objects:
 
-      string.pyc                                # Top level name
-      test/__init__.pyc                         # Package directory
-      test/test_support.pyc                          # Module test.test_support
-      test/bogus/__init__.pyc                   # Subpackage directory
-      test/bogus/myfile.pyc                     # Submodule test.bogus.myfile
+   .. method:: PyZipFile.writepy(pathname, basename='')
+
+      Search for files :file:`\*.py` and add the corresponding file to the
+      archive.
+
+      If the *optimize* parameter to :class:`PyZipFile` was not given or ``-1``,
+      the corresponding file is a :file:`\*.pyo` file if available, else a
+      :file:`\*.pyc` file, compiling if necessary.
+
+      If the *optimize* parameter to :class:`PyZipFile` was ``0``, ``1`` or
+      ``2``, only files with that optimization level (see :func:`compile`) are
+      added to the archive, compiling if necessary.
+
+      If the pathname is a file, the filename must end with :file:`.py`, and
+      just the (corresponding :file:`\*.py[co]`) file is added at the top level
+      (no path information).  If the pathname is a file that does not end with
+      :file:`.py`, a :exc:`RuntimeError` will be raised.  If it is a directory,
+      and the directory is not a package directory, then all the files
+      :file:`\*.py[co]` are added at the top level.  If the directory is a
+      package directory, then all :file:`\*.py[co]` are added under the package
+      name as a file path, and if any subdirectories are package directories,
+      all of these are added recursively.  *basename* is intended for internal
+      use only.  The :meth:`writepy` method makes archives with file names like
+      this::
+
+         string.pyc                   # Top level name
+         test/__init__.pyc            # Package directory
+         test/testall.pyc             # Module test.testall
+         test/bogus/__init__.pyc      # Subpackage directory
+         test/bogus/myfile.pyc        # Submodule test.bogus.myfile
 
 
 .. _zipinfo-objects:
@@ -434,7 +442,8 @@ Instances have the following attributes:
 
 .. attribute:: ZipInfo.extra
 
-   Expansion field data.  The `PKZIP Application Note`_ contains
+   Expansion field data.  The `PKZIP Application Note
+   <http://www.pkware.com/documents/casestudies/APPNOTE.TXT>`_ contains
    some comments on the internal structure of the data contained in this string.
 
 
@@ -497,61 +506,3 @@ Instances have the following attributes:
 
    Size of the uncompressed file.
 
-
-.. _zipfile-commandline:
-.. program:: zipfile
-
-Command-Line Interface
-----------------------
-
-The :mod:`zipfile` module provides a simple command-line interface to interact
-with ZIP archives.
-
-If you want to create a new ZIP archive, specify its name after the :option:`-c`
-option and then list the filename(s) that should be included:
-
-.. code-block:: shell-session
-
-    $ python -m zipfile -c monty.zip spam.txt eggs.txt
-
-Passing a directory is also acceptable:
-
-.. code-block:: shell-session
-
-    $ python -m zipfile -c monty.zip life-of-brian_1979/
-
-If you want to extract a ZIP archive into the specified directory, use
-the :option:`-e` option:
-
-.. code-block:: shell-session
-
-    $ python -m zipfile -e monty.zip target-dir/
-
-For a list of the files in a ZIP archive, use the :option:`-l` option:
-
-.. code-block:: shell-session
-
-    $ python -m zipfile -l monty.zip
-
-
-Command-line options
-~~~~~~~~~~~~~~~~~~~~
-
-.. cmdoption:: -l <zipfile>
-
-   List files in a zipfile.
-
-.. cmdoption:: -c <zipfile> <source1> ... <sourceN>
-
-   Create zipfile from source files.
-
-.. cmdoption:: -e <zipfile> <output_dir>
-
-   Extract zipfile into target directory.
-
-.. cmdoption:: -t <zipfile>
-
-   Test whether the zipfile is valid or not.
-
-
-.. _PKZIP Application Note: https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT

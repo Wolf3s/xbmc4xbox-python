@@ -3,126 +3,150 @@ Python Documentation README
 
 This directory contains the reStructuredText (reST) sources to the Python
 documentation.  You don't need to build them yourself, prebuilt versions are
-available at <https://docs.python.org/dev/download.html>.
+available at http://docs.python.org/download/.
 
-Documentation on authoring Python documentation, including information about
+Documentation on the authoring Python documentation, including information about
 both style and markup, is available in the "Documenting Python" chapter of the
-developers guide <https://docs.python.org/devguide/documenting.html>.
+documentation.  There's also a chapter intended to point out differences to
+those familiar with the previous docs written in LaTeX.
 
 
 Building the docs
 =================
 
-You need to have Sphinx <http://sphinx-doc.org/> installed; it is the toolset
-used to build the docs.  It is not included in this tree, but maintained
-separately and available from PyPI <https://pypi.org/project/Sphinx>.
+You need to have Python 2.4 or higher installed; the toolset used to build the
+docs is written in Python.  It is called *Sphinx*, it is not included in this
+tree, but maintained separately.  Also needed are the docutils, supplying the
+base markup that Sphinx uses, Jinja, a templating engine, and optionally
+Pygments, a code highlighter.
 
 
 Using make
 ----------
 
-A Makefile has been prepared so that on Unix, provided you have installed
-Sphinx, you can just run ::
+Luckily, a Makefile has been prepared so that on Unix, provided you have
+installed Python and Subversion, you can just run ::
 
    make html
 
-to build the HTML output files.
-
-On Windows, we try to emulate the Makefile as closely as possible with a
-``make.bat`` file.
+to check out the necessary toolset in the `tools/` subdirectory and build the
+HTML output files.  To view the generated HTML, point your favorite browser at
+the top-level index `build/html/index.html` after running "make".
 
 To use a Python interpreter that's not called ``python``, use the standard
 way to set Makefile variables, using e.g. ::
 
-   make html PYTHON=python3
-
-On Windows, set the PYTHON environment variable instead.
-
-To use a specific sphinx-build (something other than ``sphinx-build``), set
-the SPHINXBUILD variable.
+   make html PYTHON=/usr/bin/python2.5
 
 Available make targets are:
 
-* "clean", which removes all build files.
+ * "html", which builds standalone HTML files for offline viewing.
 
-* "html", which builds standalone HTML files for offline viewing.
+ * "htmlhelp", which builds HTML files and a HTML Help project file usable to
+   convert them into a single Compiled HTML (.chm) file -- these are popular
+   under Microsoft Windows, but very handy on every platform.
 
-* "htmlview", which re-uses the "html" builder, but then opens the main page
-  in your default web browser.
+   To create the CHM file, you need to run the Microsoft HTML Help Workshop over
+   the generated project (.hhp) file.
 
-* "htmlhelp", which builds HTML files and a HTML Help project file usable to
-  convert them into a single Compiled HTML (.chm) file -- these are popular
-  under Microsoft Windows, but very handy on every platform.
+ * "latex", which builds LaTeX source files as input to "pdflatex" to produce
+   PDF documents.
 
-  To create the CHM file, you need to run the Microsoft HTML Help Workshop
-  over the generated project (.hhp) file.  The make.bat script does this for
-  you on Windows.
+ * "text", which builds a plain text file for each source file.
 
-* "latex", which builds LaTeX source files as input to "pdflatex" to produce
-  PDF documents.
+ * "epub", which builds an EPUB document, suitable to be viewed on e-book
+   readers.
 
-* "text", which builds a plain text file for each source file.
+ * "linkcheck", which checks all external references to see whether they are
+   broken, redirected or malformed, and outputs this information to stdout as
+   well as a plain-text (.txt) file.
 
-* "epub", which builds an EPUB document, suitable to be viewed on e-book
-  readers.
+ * "changes", which builds an overview over all versionadded/versionchanged/
+   deprecated items in the current version. This is meant as a help for the
+   writer of the "What's New" document.
 
-* "linkcheck", which checks all external references to see whether they are
-  broken, redirected or malformed, and outputs this information to stdout as
-  well as a plain-text (.txt) file.
+ * "coverage", which builds a coverage overview for standard library modules and
+   C API.
 
-* "changes", which builds an overview over all versionadded/versionchanged/
-  deprecated items in the current version. This is meant as a help for the
-  writer of the "What's New" document.
+ * "pydoc-topics", which builds a Python module containing a dictionary with
+   plain text documentation for the labels defined in
+   `tools/sphinxext/pyspecific.py` -- pydoc needs these to show topic and
+   keyword help.
 
-* "coverage", which builds a coverage overview for standard library modules and
-  C API.
-
-* "pydoc-topics", which builds a Python module containing a dictionary with
-  plain text documentation for the labels defined in
-  `tools/pyspecific.py` -- pydoc needs these to show topic and keyword help.
-
-* "suspicious", which checks the parsed markup for text that looks like
-  malformed and thus unconverted reST.
-
-* "check", which checks for frequent markup errors.
-
-* "serve", which serves the build/html directory on port 8000.
-
-* "dist", (Unix only) which creates distributable archives of HTML, text,
-  PDF, and EPUB builds.
+A "make update" updates the Subversion checkouts in `tools/`.
 
 
 Without make
 ------------
 
-Install the Sphinx package and its dependencies from PyPI.
+You'll need to install the Sphinx package, either by checking it out via ::
 
-Then, from the ``Doc`` directory, run ::
+   svn co http://svn.python.org/projects/external/Sphinx-1.0.7/sphinx tools/sphinx
 
-   sphinx-build -b<builder> . build/<builder>
+or by installing it from PyPI.
 
-where ``<builder>`` is one of html, text, latex, or htmlhelp (for explanations
-see the make targets above).
+Then, you need to install Docutils, either by checking it out via ::
 
-Deprecation header
-==================
+   svn co http://svn.python.org/projects/external/docutils-0.6/docutils tools/docutils
 
-Following the sunsetting of Python 2.7, a red banner displays at the
-top of each page redirecting to the corresponding page on
-``https://docs.python.org/3/``.
+or by installing it from http://docutils.sf.net/.
+
+You also need Jinja2, either by checking it out via ::
+
+   svn co http://svn.python.org/projects/external/Jinja-2.3.1/jinja2 tools/jinja2
+
+or by installing it from PyPI.
+
+You can optionally also install Pygments, either as a checkout via ::
+
+   svn co http://svn.python.org/projects/external/Pygments-1.3.1/pygments tools/pygments
+
+or from PyPI at http://pypi.python.org/pypi/Pygments.
+
+
+Then, make an output directory, e.g. under `build/`, and run ::
+
+   python tools/sphinx-build.py -b<builder> . build/<outputdirectory>
+
+where `<builder>` is one of html, text, latex, or htmlhelp (for explanations see
+the make targets above).
 
 
 Contributing
 ============
 
 Bugs in the content should be reported to the Python bug tracker at
-https://bugs.python.org.
+http://bugs.python.org.
 
 Bugs in the toolset should be reported in the Sphinx bug tracker at
-https://www.bitbucket.org/birkenfeld/sphinx/issues/.
+http://www.bitbucket.org/birkenfeld/sphinx/issues/.
 
 You can also send a mail to the Python Documentation Team at docs@python.org,
 and we will process your request as soon as possible.
 
 If you want to help the Documentation Team, you are always welcome.  Just send
 a mail to docs@python.org.
+
+
+Copyright notice
+================
+
+The Python source is copyrighted, but you can freely use and copy it
+as long as you don't change or remove the copyright notice:
+
+----------------------------------------------------------------------
+Copyright (c) 2000-2014 Python Software Foundation.
+All rights reserved.
+
+Copyright (c) 2000 BeOpen.com.
+All rights reserved.
+
+Copyright (c) 1995-2000 Corporation for National Research Initiatives.
+All rights reserved.
+
+Copyright (c) 1991-1995 Stichting Mathematisch Centrum.
+All rights reserved.
+
+See the file "license.rst" for information on usage and redistribution
+of this file, and for a DISCLAIMER OF ALL WARRANTIES.
+----------------------------------------------------------------------

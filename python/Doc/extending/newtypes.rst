@@ -19,14 +19,6 @@ strings and lists in core Python.
 This is not hard; the code for all extension types follows a pattern, but there
 are some details that you need to understand before you can get started.
 
-.. note::
-
-   The way new types are defined changed dramatically (and for the better) in
-   Python 2.2.  This document documents how to define new types for Python 2.2 and
-   later.  If you need to support older versions of Python, you will need to refer
-   to `older versions of this documentation
-   <https://www.python.org/doc/versions/>`_.
-
 
 .. _dnt-basics:
 
@@ -69,12 +61,12 @@ probably will!  (On Windows, MSVC is known to call this an error and refuse to
 compile the code.)
 
 For contrast, let's take a look at the corresponding definition for standard
-Python integers::
+Python floats::
 
    typedef struct {
        PyObject_HEAD
-       long ob_ival;
-   } PyIntObject;
+       double ob_fval;
+   } PyFloatObject;
 
 Moving on, we come to the crunch --- the type object. ::
 
@@ -87,12 +79,12 @@ Moving on, we come to the crunch --- the type object. ::
        0,                         /* tp_print */
        0,                         /* tp_getattr */
        0,                         /* tp_setattr */
-       0,                         /* tp_compare */
+       0,                         /* tp_reserved */
        0,                         /* tp_repr */
        0,                         /* tp_as_number */
        0,                         /* tp_as_sequence */
        0,                         /* tp_as_mapping */
-       0,                         /* tp_hash */
+       0,                         /* tp_hash  */
        0,                         /* tp_call */
        0,                         /* tp_str */
        0,                         /* tp_getattro */
@@ -127,14 +119,12 @@ our objects and in some error messages, for example::
 
    >>> "" + noddy.new_noddy()
    Traceback (most recent call last):
-     File "<stdin>", line 1, in <module>
+     File "<stdin>", line 1, in ?
    TypeError: cannot add type "noddy.Noddy" to string
 
 Note that the name is a dotted name that includes both the module name and the
 name of the type within the module. The module in this case is :mod:`noddy` and
-the type is :class:`Noddy`, so we set the type name to :class:`noddy.Noddy`.
-One side effect of using an undotted name is that the pydoc documentation tool
-will not list the new type in the module documentation. ::
+the type is :class:`Noddy`, so we set the type name to :class:`noddy.Noddy`. ::
 
    sizeof(noddy_NoddyObject),  /* tp_basicsize */
 
@@ -144,11 +134,11 @@ This is so that Python knows how much memory to allocate when you call
 .. note::
 
    If you want your type to be subclassable from Python, and your type has the same
-   :c:member:`~PyTypeObject.tp_basicsize` as its base type, you may have problems with multiple
+   :attr:`tp_basicsize` as its base type, you may have problems with multiple
    inheritance.  A Python subclass of your type will have to list your type first
-   in its :attr:`~class.__bases__`, or else it will not be able to call your type's
+   in its :attr:`__bases__`, or else it will not be able to call your type's
    :meth:`__new__` method without getting an error.  You can avoid this problem by
-   ensuring that your type has a larger value for :c:member:`~PyTypeObject.tp_basicsize` than its
+   ensuring that your type has a larger value for :attr:`tp_basicsize` than its
    base type does.  Most of the time, this will be true anyway, because either your
    base type will be :class:`object`, or else you will be adding data members to
    your base type, and therefore increasing its size.
@@ -168,7 +158,7 @@ to :const:`Py_TPFLAGS_DEFAULT`. ::
 All types should include this constant in their flags.  It enables all of the
 members defined by the current version of Python.
 
-We provide a doc string for the type in :c:member:`~PyTypeObject.tp_doc`. ::
+We provide a doc string for the type in :attr:`tp_doc`. ::
 
    "Noddy objects",           /* tp_doc */
 
@@ -177,12 +167,12 @@ from the others.  We aren't going to implement any of these in this version of
 the module.  We'll expand this example later to have more interesting behavior.
 
 For now, all we want to be able to do is to create new :class:`Noddy` objects.
-To enable object creation, we have to provide a :c:member:`~PyTypeObject.tp_new` implementation.
+To enable object creation, we have to provide a :attr:`tp_new` implementation.
 In this case, we can just use the default implementation provided by the API
 function :c:func:`PyType_GenericNew`.  We'd like to just assign this to the
-:c:member:`~PyTypeObject.tp_new` slot, but we can't, for portability sake, On some platforms or
+:attr:`tp_new` slot, but we can't, for portability sake, On some platforms or
 compilers, we can't statically initialize a structure member with a function
-defined in another C module, so, instead, we'll assign the :c:member:`~PyTypeObject.tp_new` slot
+defined in another C module, so, instead, we'll assign the :attr:`tp_new` slot
 in the module initialization function just before calling
 :c:func:`PyType_Ready`::
 
@@ -194,7 +184,7 @@ All the other type methods are *NULL*, so we'll go over them later --- that's
 for a later section!
 
 Everything else in the file should be familiar, except for some code in
-:c:func:`initnoddy`::
+:c:func:`PyInit_noddy`::
 
    if (PyType_Ready(&noddy_NoddyType) < 0)
        return;
@@ -217,9 +207,7 @@ That's it!  All that remains is to build it; put the above code in a file called
    setup(name="noddy", version="1.0",
          ext_modules=[Extension("noddy", ["noddy.c"])])
 
-in a file called :file:`setup.py`; then typing
-
-.. code-block:: shell-session
+in a file called :file:`setup.py`; then typing ::
 
    $ python setup.py build
 
@@ -236,7 +224,7 @@ doesn't do anything. It can't even be subclassed.
 Adding data and methods to the Basic example
 --------------------------------------------
 
-Let's extend the basic example to add some data and methods.  Let's also make
+Let's expend the basic example to add some data and methods.  Let's also make
 the type usable as a base class. We'll create a new module, :mod:`noddy2` that
 adds these capabilities:
 
@@ -279,13 +267,13 @@ allocation and deallocation.  At a minimum, we need a deallocation method::
        Py_TYPE(self)->tp_free((PyObject*)self);
    }
 
-which is assigned to the :c:member:`~PyTypeObject.tp_dealloc` member::
+which is assigned to the :attr:`tp_dealloc` member::
 
    (destructor)Noddy_dealloc, /*tp_dealloc*/
 
 This method decrements the reference counts of the two Python attributes. We use
 :c:func:`Py_XDECREF` here because the :attr:`first` and :attr:`last` members
-could be *NULL*.  It then calls the :c:member:`~PyTypeObject.tp_free` member of the object's type
+could be *NULL*.  It then calls the :attr:`tp_free` member of the object's type
 to free the object's memory.  Note that the object's type might not be
 :class:`NoddyType`, because the object may be an instance of a subclass.
 
@@ -299,14 +287,14 @@ strings, so we provide a new method::
 
        self = (Noddy *)type->tp_alloc(type, 0);
        if (self != NULL) {
-           self->first = PyString_FromString("");
+           self->first = PyUnicode_FromString("");
            if (self->first == NULL)
              {
                Py_DECREF(self);
                return NULL;
              }
 
-           self->last = PyString_FromString("");
+           self->last = PyUnicode_FromString("");
            if (self->last == NULL)
              {
                Py_DECREF(self);
@@ -319,7 +307,7 @@ strings, so we provide a new method::
        return (PyObject *)self;
    }
 
-and install it in the :c:member:`~PyTypeObject.tp_new` member::
+and install it in the :attr:`tp_new` member::
 
    Noddy_new,                 /* tp_new */
 
@@ -340,16 +328,16 @@ created. New methods always accept positional and keyword arguments, but they
 often ignore the arguments, leaving the argument handling to initializer
 methods. Note that if the type supports subclassing, the type passed may not be
 the type being defined.  The new method calls the tp_alloc slot to allocate
-memory. We don't fill the :c:member:`~PyTypeObject.tp_alloc` slot ourselves. Rather
+memory. We don't fill the :attr:`tp_alloc` slot ourselves. Rather
 :c:func:`PyType_Ready` fills it for us by inheriting it from our base class,
 which is :class:`object` by default.  Most types use the default allocation.
 
 .. note::
 
-   If you are creating a co-operative :c:member:`~PyTypeObject.tp_new` (one that calls a base type's
-   :c:member:`~PyTypeObject.tp_new` or :meth:`__new__`), you must *not* try to determine what method
+   If you are creating a co-operative :attr:`tp_new` (one that calls a base type's
+   :attr:`tp_new` or :meth:`__new__`), you must *not* try to determine what method
    to call using method resolution order at runtime.  Always statically determine
-   what type you are going to call, and call its :c:member:`~PyTypeObject.tp_new` directly, or via
+   what type you are going to call, and call its :attr:`tp_new` directly, or via
    ``type->tp_base->tp_new``.  If you do not do this, Python subclasses of your
    type that also inherit from other Python-defined classes may not work correctly.
    (Specifically, you may not be able to create instances of such subclasses
@@ -386,11 +374,11 @@ We provide an initialization function::
        return 0;
    }
 
-by filling the :c:member:`~PyTypeObject.tp_init` slot. ::
+by filling the :attr:`tp_init` slot. ::
 
    (initproc)Noddy_init,         /* tp_init */
 
-The :c:member:`~PyTypeObject.tp_init` slot is exposed in Python as the :meth:`__init__` method. It
+The :attr:`tp_init` slot is exposed in Python as the :meth:`__init__` method. It
 is used to initialize an object after it's created. Unlike the new method, we
 can't guarantee that the initializer is called.  The initializer isn't called
 when unpickling objects and it can be overridden.  Our initializer accepts
@@ -420,7 +408,7 @@ reference counts.  When don't we have to do this?
 * when we know that deallocation of the object [#]_ will not cause any calls
   back into our type's code
 
-* when decrementing a reference count in a :c:member:`~PyTypeObject.tp_dealloc` handler when
+* when decrementing a reference count in a :attr:`tp_dealloc` handler when
   garbage-collections is not supported [#]_
 
 We want to expose our instance variables as attributes. There are a
@@ -436,7 +424,7 @@ number of ways to do that. The simplest way is to define member definitions::
        {NULL}  /* Sentinel */
    };
 
-and put the definitions in the :c:member:`~PyTypeObject.tp_members` slot::
+and put the definitions in the :attr:`tp_members` slot::
 
    Noddy_members,             /* tp_members */
 
@@ -461,7 +449,7 @@ concatenation of the first and last names. ::
        PyObject *args, *result;
 
        if (format == NULL) {
-           format = PyString_FromString("%s %s");
+           format = PyUnicode_FromString("%s %s");
            if (format == NULL)
                return NULL;
        }
@@ -480,7 +468,7 @@ concatenation of the first and last names. ::
        if (args == NULL)
            return NULL;
 
-       result = PyString_Format(format, args);
+       result = PyUnicode_Format(format, args);
        Py_DECREF(args);
 
        return result;
@@ -489,7 +477,7 @@ concatenation of the first and last names. ::
 The method is implemented as a C function that takes a :class:`Noddy` (or
 :class:`Noddy` subclass) instance as the first argument.  Methods always take an
 instance as the first argument. Methods often take positional and keyword
-arguments as well, but in this case we don't take any and don't need to accept
+arguments as well, but in this cased we don't take any and don't need to accept
 a positional argument tuple or keyword argument dictionary. This method is
 equivalent to the Python method::
 
@@ -512,7 +500,7 @@ definitions::
        {NULL}  /* Sentinel */
    };
 
-and assign them to the :c:member:`~PyTypeObject.tp_methods` slot::
+and assign them to the :attr:`tp_methods` slot::
 
    Noddy_methods,             /* tp_methods */
 
@@ -526,8 +514,8 @@ object being created or used, so all we need to do is to add the
 
    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
 
-We rename :c:func:`initnoddy` to :c:func:`initnoddy2` and update the module name
-passed to :c:func:`Py_InitModule3`.
+We rename :c:func:`PyInit_noddy` to :c:func:`PyInit_noddy2` and update the module
+name in the :c:type:`PyModuleDef` struct.
 
 Finally, we update our :file:`setup.py` file to build the new module::
 
@@ -569,9 +557,9 @@ getting and setting the :attr:`first` attribute::
        return -1;
      }
 
-     if (! PyString_Check(value)) {
+     if (! PyUnicode_Check(value)) {
        PyErr_SetString(PyExc_TypeError,
-                       "The first attribute value must be a string");
+                       "The first attribute value must be a str");
        return -1;
      }
 
@@ -607,7 +595,7 @@ We create an array of :c:type:`PyGetSetDef` structures::
        {NULL}  /* Sentinel */
    };
 
-and register it in the :c:member:`~PyTypeObject.tp_getset` slot::
+and register it in the :attr:`tp_getset` slot::
 
    Noddy_getseters,           /* tp_getset */
 
@@ -624,7 +612,7 @@ We also remove the member definitions for these attributes::
        {NULL}  /* Sentinel */
    };
 
-We also need to update the :c:member:`~PyTypeObject.tp_init` handler to only allow strings [#]_ to
+We also need to update the :attr:`tp_init` handler to only allow strings [#]_ to
 be passed::
 
    static int
@@ -685,7 +673,7 @@ Fortunately, Python's cyclic-garbage collector will eventually figure out that
 the list is garbage and free it.
 
 In the second version of the :class:`Noddy` example, we allowed any kind of
-object to be stored in the :attr:`first` or :attr:`last` attributes [#]_. This
+object to be stored in the :attr:`first` or :attr:`last` attributes. [#]_ This
 means that :class:`Noddy` objects can participate in cycles::
 
    >>> import noddy2
@@ -729,9 +717,8 @@ For each subobject that can participate in cycles, we need to call the
 *arg* passed to the traversal method.  It returns an integer value that must be
 returned if it is non-zero.
 
-Python 2.4 and higher provide a :c:func:`Py_VISIT` macro that automates calling
-visit functions.  With :c:func:`Py_VISIT`, :c:func:`Noddy_traverse` can be
-simplified::
+Python provides a :c:func:`Py_VISIT` macro that automates calling visit
+functions.  With :c:func:`Py_VISIT`, :c:func:`Noddy_traverse` can be simplified::
 
    static int
    Noddy_traverse(Noddy *self, visitproc visit, void *arg)
@@ -743,14 +730,13 @@ simplified::
 
 .. note::
 
-   Note that the :c:member:`~PyTypeObject.tp_traverse` implementation must name its arguments exactly
+   Note that the :attr:`tp_traverse` implementation must name its arguments exactly
    *visit* and *arg* in order to use :c:func:`Py_VISIT`.  This is to encourage
    uniformity across these boring implementations.
 
 We also need to provide a method for clearing any subobjects that can
-participate in cycles.
-
-::
+participate in cycles.  We implement the method and reimplement the deallocator
+to use it::
 
    static int
    Noddy_clear(Noddy *self)
@@ -768,19 +754,26 @@ participate in cycles.
        return 0;
    }
 
+   static void
+   Noddy_dealloc(Noddy* self)
+   {
+       Noddy_clear(self);
+       Py_TYPE(self)->tp_free((PyObject*)self);
+   }
+
 Notice the use of a temporary variable in :c:func:`Noddy_clear`. We use the
 temporary variable so that we can set each member to *NULL* before decrementing
 its reference count.  We do this because, as was discussed earlier, if the
 reference count drops to zero, we might cause code to run that calls back into
 the object.  In addition, because we now support garbage collection, we also
 have to worry about code being run that triggers garbage collection.  If garbage
-collection is run, our :c:member:`~PyTypeObject.tp_traverse` handler could get called. We can't
+collection is run, our :attr:`tp_traverse` handler could get called. We can't
 take a chance of having :c:func:`Noddy_traverse` called when a member's reference
 count has dropped to zero and its value hasn't been set to *NULL*.
 
-Python 2.4 and higher provide a :c:func:`Py_CLEAR` that automates the careful
-decrementing of reference counts.  With :c:func:`Py_CLEAR`, the
-:c:func:`Noddy_clear` function can be simplified::
+Python provides a :c:func:`Py_CLEAR` that automates the careful decrementing of
+reference counts.  With :c:func:`Py_CLEAR`, the :c:func:`Noddy_clear` function can
+be simplified::
 
    static int
    Noddy_clear(Noddy *self)
@@ -790,29 +783,12 @@ decrementing of reference counts.  With :c:func:`Py_CLEAR`, the
        return 0;
    }
 
-Note that :c:func:`Noddy_dealloc` may call arbitrary functions through
-``__del__`` method or weakref callback. It means circular GC can be
-triggered inside the function.  Since GC assumes reference count is not zero,
-we need to untrack the object from GC by calling :c:func:`PyObject_GC_UnTrack`
-before clearing members. Here is reimplemented deallocator which uses
-:c:func:`PyObject_GC_UnTrack` and :c:func:`Noddy_clear`.
-
-::
-
-   static void
-   Noddy_dealloc(Noddy* self)
-   {
-       PyObject_GC_UnTrack(self);
-       Noddy_clear(self);
-       Py_TYPE(self)->tp_free((PyObject*)self);
-   }
-
 Finally, we add the :const:`Py_TPFLAGS_HAVE_GC` flag to the class flags::
 
    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_GC, /* tp_flags */
 
-That's pretty much it.  If we had written custom :c:member:`~PyTypeObject.tp_alloc` or
-:c:member:`~PyTypeObject.tp_free` slots, we'd need to modify them for cyclic-garbage collection.
+That's pretty much it.  If we had written custom :attr:`tp_alloc` or
+:attr:`tp_free` slots, we'd need to modify them for cyclic-garbage collection.
 Most extensions will use the versions automatically provided.
 
 
@@ -832,11 +808,11 @@ increases an internal counter. ::
    >>> import shoddy
    >>> s = shoddy.Shoddy(range(3))
    >>> s.extend(s)
-   >>> print len(s)
+   >>> print(len(s))
    6
-   >>> print s.increment()
+   >>> print(s.increment())
    1
-   >>> print s.increment()
+   >>> print(s.increment())
    2
 
 .. literalinclude:: ../includes/shoddy.c
@@ -871,8 +847,8 @@ the :attr:`__init__` method of the base type.
 
 This pattern is important when writing a type with custom :attr:`new` and
 :attr:`dealloc` methods. The :attr:`new` method should not actually create the
-memory for the object with :c:member:`~PyTypeObject.tp_alloc`, that will be handled by the base
-class when calling its :c:member:`~PyTypeObject.tp_new`.
+memory for the object with :attr:`tp_alloc`, that will be handled by the base
+class when calling its :attr:`tp_new`.
 
 When filling out the :c:func:`PyTypeObject` for the :class:`Shoddy` type, you see
 a slot for :c:func:`tp_base`. Due to cross platform compiler issues, you can't
@@ -880,25 +856,26 @@ fill that field directly with the :c:func:`PyList_Type`; it can be done later in
 the module's :c:func:`init` function. ::
 
    PyMODINIT_FUNC
-   initshoddy(void)
+   PyInit_shoddy(void)
    {
        PyObject *m;
 
        ShoddyType.tp_base = &PyList_Type;
        if (PyType_Ready(&ShoddyType) < 0)
-           return;
+           return NULL;
 
-       m = Py_InitModule3("shoddy", NULL, "Shoddy module");
+       m = PyModule_Create(&shoddymodule);
        if (m == NULL)
-           return;
+           return NULL;
 
        Py_INCREF(&ShoddyType);
        PyModule_AddObject(m, "Shoddy", (PyObject *) &ShoddyType);
+       return m;
    }
 
 Before calling :c:func:`PyType_Ready`, the type structure must have the
-:c:member:`~PyTypeObject.tp_base` slot filled in. When we are deriving a new type, it is not
-necessary to fill out the :c:member:`~PyTypeObject.tp_alloc` slot with :c:func:`PyType_GenericNew`
+:attr:`tp_base` slot filled in. When we are deriving a new type, it is not
+necessary to fill out the :attr:`tp_alloc` slot with :c:func:`PyType_GenericNew`
 -- the allocate function from the base type will be inherited.
 
 After that, calling :c:func:`PyType_Ready` and adding the type object to the
@@ -941,7 +918,7 @@ that will be helpful in such a situation! ::
 
 These fields tell the runtime how much memory to allocate when new objects of
 this type are created.  Python has some built-in support for variable length
-structures (think: strings, lists) which is where the :c:member:`~PyTypeObject.tp_itemsize` field
+structures (think: strings, lists) which is where the :attr:`tp_itemsize` field
 comes in.  This will be dealt with later. ::
 
    char *tp_doc;
@@ -968,9 +945,8 @@ Finalization and De-allocation
 
 This function is called when the reference count of the instance of your type is
 reduced to zero and the Python interpreter wants to reclaim it.  If your type
-has memory to free or other clean-up to perform, you can put it here.  The
-object itself needs to be freed here as well.  Here is an example of this
-function::
+has memory to free or other clean-up to perform, put it here.  The object itself
+needs to be freed here as well.  Here is an example of this function::
 
    static void
    newdatatype_dealloc(newdatatypeobject * obj)
@@ -1030,42 +1006,35 @@ Object Presentation
    builtin: repr
    builtin: str
 
-In Python, there are three ways to generate a textual representation of an
-object: the :func:`repr` function (or equivalent back-tick syntax), the
-:func:`str` function, and the :keyword:`print` statement.  For most objects, the
-:keyword:`print` statement is equivalent to the :func:`str` function, but it is
-possible to special-case printing to a :c:type:`FILE\*` if necessary; this should
-only be done if efficiency is identified as a problem and profiling suggests
-that creating a temporary string object to be written to a file is too
-expensive.
+In Python, there are two ways to generate a textual representation of an object:
+the :func:`repr` function, and the :func:`str` function.  (The :func:`print`
+function just calls :func:`str`.)  These handlers are both optional.
 
-These handlers are all optional, and most types at most need to implement the
-:c:member:`~PyTypeObject.tp_str` and :c:member:`~PyTypeObject.tp_repr` handlers. ::
+::
 
    reprfunc tp_repr;
    reprfunc tp_str;
-   printfunc tp_print;
 
-The :c:member:`~PyTypeObject.tp_repr` handler should return a string object containing a
+The :attr:`tp_repr` handler should return a string object containing a
 representation of the instance for which it is called.  Here is a simple
 example::
 
    static PyObject *
    newdatatype_repr(newdatatypeobject * obj)
    {
-       return PyString_FromFormat("Repr-ified_newdatatype{{size:\%d}}",
-                                  obj->obj_UnderlyingDatatypePtr->size);
+       return PyUnicode_FromFormat("Repr-ified_newdatatype{{size:\%d}}",
+                                   obj->obj_UnderlyingDatatypePtr->size);
    }
 
-If no :c:member:`~PyTypeObject.tp_repr` handler is specified, the interpreter will supply a
-representation that uses the type's :c:member:`~PyTypeObject.tp_name` and a uniquely-identifying
+If no :attr:`tp_repr` handler is specified, the interpreter will supply a
+representation that uses the type's :attr:`tp_name` and a uniquely-identifying
 value for the object.
 
-The :c:member:`~PyTypeObject.tp_str` handler is to :func:`str` what the :c:member:`~PyTypeObject.tp_repr` handler
+The :attr:`tp_str` handler is to :func:`str` what the :attr:`tp_repr` handler
 described above is to :func:`repr`; that is, it is called when Python code calls
 :func:`str` on an instance of your object.  Its implementation is very similar
-to the :c:member:`~PyTypeObject.tp_repr` function, but the resulting string is intended for human
-consumption.  If :c:member:`~PyTypeObject.tp_str` is not specified, the :c:member:`~PyTypeObject.tp_repr` handler is
+to the :attr:`tp_repr` function, but the resulting string is intended for human
+consumption.  If :attr:`tp_str` is not specified, the :attr:`tp_repr` handler is
 used instead.
 
 Here is a simple example::
@@ -1073,38 +1042,10 @@ Here is a simple example::
    static PyObject *
    newdatatype_str(newdatatypeobject * obj)
    {
-       return PyString_FromFormat("Stringified_newdatatype{{size:\%d}}",
-                                  obj->obj_UnderlyingDatatypePtr->size);
+       return PyUnicode_FromFormat("Stringified_newdatatype{{size:\%d}}",
+                                   obj->obj_UnderlyingDatatypePtr->size);
    }
 
-The print function will be called whenever Python needs to "print" an instance
-of the type.  For example, if 'node' is an instance of type TreeNode, then the
-print function is called when Python code calls::
-
-   print node
-
-There is a flags argument and one flag, :const:`Py_PRINT_RAW`, and it suggests
-that you print without string quotes and possibly without interpreting escape
-sequences.
-
-The print function receives a file object as an argument. You will likely want
-to write to that file object.
-
-Here is a sample print function::
-
-   static int
-   newdatatype_print(newdatatypeobject *obj, FILE *fp, int flags)
-   {
-       if (flags & Py_PRINT_RAW) {
-           fprintf(fp, "<{newdatatype object--size: %d}>",
-                   obj->obj_UnderlyingDatatypePtr->size);
-       }
-       else {
-           fprintf(fp, "\"<{newdatatype object--size: %d}>\"",
-                   obj->obj_UnderlyingDatatypePtr->size);
-       }
-       return 0;
-   }
 
 
 Attribute Management
@@ -1125,8 +1066,8 @@ sense for the implementation's convenience. ::
    getattrfunc  tp_getattr;        /* char * version */
    setattrfunc  tp_setattr;
    /* ... */
-   getattrofunc tp_getattrofunc;   /* PyObject * version */
-   setattrofunc tp_setattrofunc;
+   getattrofunc tp_getattro;       /* PyObject * version */
+   setattrofunc tp_setattro;
 
 If accessing attributes of an object is always a simple operation (this will be
 explained shortly), there are generic implementations which can be used to
@@ -1140,8 +1081,6 @@ not been updated to use some of the new generic mechanism that is available.
 
 Generic Attribute Management
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. versionadded:: 2.2
 
 Most extension types only use *simple* attributes.  So, what makes the
 attributes simple?  There are only a couple of conditions that must be met:
@@ -1160,7 +1099,7 @@ type object to create :term:`descriptor`\s which are placed in the dictionary of
 type object.  Each descriptor controls access to one attribute of the instance
 object.  Each of the tables is optional; if all three are *NULL*, instances of
 the type will only have attributes that are inherited from their base type, and
-should leave the :c:member:`~PyTypeObject.tp_getattro` and :c:member:`~PyTypeObject.tp_setattro` fields *NULL* as
+should leave the :attr:`tp_getattro` and :attr:`tp_setattro` fields *NULL* as
 well, allowing the base type to handle attributes.
 
 The tables are declared as three fields of the type object::
@@ -1169,15 +1108,15 @@ The tables are declared as three fields of the type object::
    struct PyMemberDef *tp_members;
    struct PyGetSetDef *tp_getset;
 
-If :c:member:`~PyTypeObject.tp_methods` is not *NULL*, it must refer to an array of
+If :attr:`tp_methods` is not *NULL*, it must refer to an array of
 :c:type:`PyMethodDef` structures.  Each entry in the table is an instance of this
 structure::
 
    typedef struct PyMethodDef {
-       const char  *ml_name;       /* method name */
+       char        *ml_name;       /* method name */
        PyCFunction  ml_meth;       /* implementation function */
        int          ml_flags;      /* flags */
-       const char  *ml_doc;        /* docstring */
+       char        *ml_doc;        /* docstring */
    } PyMethodDef;
 
 One entry should be defined for each method provided by the type; no entries are
@@ -1217,8 +1156,6 @@ combined using bitwise-OR.
 +===========================+==============================================+
 | :const:`READONLY`         | Never writable.                              |
 +---------------------------+----------------------------------------------+
-| :const:`RO`               | Shorthand for :const:`READONLY`.             |
-+---------------------------+----------------------------------------------+
 | :const:`READ_RESTRICTED`  | Not readable in restricted mode.             |
 +---------------------------+----------------------------------------------+
 | :const:`WRITE_RESTRICTED` | Not writable in restricted mode.             |
@@ -1228,18 +1165,17 @@ combined using bitwise-OR.
 
 .. index::
    single: READONLY
-   single: RO
    single: READ_RESTRICTED
    single: WRITE_RESTRICTED
    single: RESTRICTED
 
-An interesting advantage of using the :c:member:`~PyTypeObject.tp_members` table to build
+An interesting advantage of using the :attr:`tp_members` table to build
 descriptors that are used at runtime is that any attribute defined this way can
 have an associated doc string simply by providing the text in the table.  An
 application can use the introspection API to retrieve the descriptor from the
 class object, and get the doc string using its :attr:`__doc__` attribute.
 
-As with the :c:member:`~PyTypeObject.tp_methods` table, a sentinel entry with a :attr:`name` value
+As with the :attr:`tp_methods` table, a sentinel entry with a :attr:`name` value
 of *NULL* is required.
 
 .. XXX Descriptors need to be explained in more detail somewhere, but not here.
@@ -1259,44 +1195,35 @@ For simplicity, only the :c:type:`char\*` version will be demonstrated here; the
 type of the name parameter is the only difference between the :c:type:`char\*`
 and :c:type:`PyObject\*` flavors of the interface. This example effectively does
 the same thing as the generic example above, but does not use the generic
-support added in Python 2.2.  The value in showing this is two-fold: it
-demonstrates how basic attribute management can be done in a way that is
-portable to older versions of Python, and explains how the handler functions are
+support added in Python 2.2.  It explains how the handler functions are
 called, so that if you do need to extend their functionality, you'll understand
 what needs to be done.
 
-The :c:member:`~PyTypeObject.tp_getattr` handler is called when the object requires an attribute
+The :attr:`tp_getattr` handler is called when the object requires an attribute
 look-up.  It is called in the same situations where the :meth:`__getattr__`
 method of a class would be called.
 
-A likely way to handle this is (1) to implement a set of functions (such as
-:c:func:`newdatatype_getSize` and :c:func:`newdatatype_setSize` in the example
-below), (2) provide a method table listing these functions, and (3) provide a
-getattr function that returns the result of a lookup in that table.  The method
-table uses the same structure as the :c:member:`~PyTypeObject.tp_methods` field of the type
-object.
-
 Here is an example::
-
-   static PyMethodDef newdatatype_methods[] = {
-       {"getSize", (PyCFunction)newdatatype_getSize, METH_VARARGS,
-        "Return the current size."},
-       {"setSize", (PyCFunction)newdatatype_setSize, METH_VARARGS,
-        "Set the size."},
-       {NULL, NULL, 0, NULL}           /* sentinel */
-   };
 
    static PyObject *
    newdatatype_getattr(newdatatypeobject *obj, char *name)
    {
-       return Py_FindMethod(newdatatype_methods, (PyObject *)obj, name);
+       if (strcmp(name, "data") == 0)
+       {
+           return PyInt_FromLong(obj->data);
+       }
+
+       PyErr_Format(PyExc_AttributeError,
+                    "'%.50s' object has no attribute '%.400s'",
+                    tp->tp_name, name);
+       return NULL;
    }
 
-The :c:member:`~PyTypeObject.tp_setattr` handler is called when the :meth:`__setattr__` or
+The :attr:`tp_setattr` handler is called when the :meth:`__setattr__` or
 :meth:`__delattr__` method of a class instance would be called.  When an
 attribute should be deleted, the third parameter will be *NULL*.  Here is an
 example that simply raises an exception; if this were really all you wanted, the
-:c:member:`~PyTypeObject.tp_setattr` handler should be set to *NULL*. ::
+:attr:`tp_setattr` handler should be set to *NULL*. ::
 
    static int
    newdatatype_setattr(newdatatypeobject *obj, char *name, PyObject *v)
@@ -1305,49 +1232,53 @@ example that simply raises an exception; if this were really all you wanted, the
        return -1;
    }
 
-
 Object Comparison
 -----------------
 
 ::
 
-   cmpfunc tp_compare;
+   richcmpfunc tp_richcompare;
 
-The :c:member:`~PyTypeObject.tp_compare` handler is called when comparisons are needed and the
-object does not implement the specific rich comparison method which matches the
-requested comparison.  (It is always used if defined and the
-:c:func:`PyObject_Compare` or :c:func:`PyObject_Cmp` functions are used, or if
-:func:`cmp` is used from Python.) It is analogous to the :meth:`__cmp__` method.
-This function should return ``-1`` if *obj1* is less than *obj2*, ``0`` if they
-are equal, and ``1`` if *obj1* is greater than *obj2*. (It was previously
-allowed to return arbitrary negative or positive integers for less than and
-greater than, respectively; as of Python 2.2, this is no longer allowed.  In the
-future, other return values may be assigned a different meaning.)
+The :attr:`tp_richcompare` handler is called when comparisons are needed.  It is
+analogous to the :ref:`rich comparison methods <richcmpfuncs>`, like
+:meth:`__lt__`, and also called by :c:func:`PyObject_RichCompare` and
+:c:func:`PyObject_RichCompareBool`.
 
-A :c:member:`~PyTypeObject.tp_compare` handler may raise an exception.  In this case it should
-return a negative value.  The caller has to test for the exception using
-:c:func:`PyErr_Occurred`.
+This function is called with two Python objects and the operator as arguments,
+where the operator is one of ``Py_EQ``, ``Py_NE``, ``Py_LE``, ``Py_GT``,
+``Py_LT`` or ``Py_GT``.  It should compare the two objects with respect to the
+specified operator and return ``Py_True`` or ``Py_False`` if the comparison is
+successful, ``Py_NotImplemented`` to indicate that comparison is not
+implemented and the other object's comparison method should be tried, or *NULL*
+if an exception was set.
 
-Here is a sample implementation::
+Here is a sample implementation, for a datatype that is considered equal if the
+size of an internal pointer is equal::
 
    static int
-   newdatatype_compare(newdatatypeobject * obj1, newdatatypeobject * obj2)
+   newdatatype_richcmp(PyObject *obj1, PyObject *obj2, int op)
    {
-       long result;
+       PyObject *result;
+       int c, size1, size2;
 
-       if (obj1->obj_UnderlyingDatatypePtr->size <
-           obj2->obj_UnderlyingDatatypePtr->size) {
-           result = -1;
+       /* code to make sure that both arguments are of type
+          newdatatype omitted */
+
+       size1 = obj1->obj_UnderlyingDatatypePtr->size;
+       size2 = obj2->obj_UnderlyingDatatypePtr->size;
+
+       switch (op) {
+       case Py_LT: c = size1 <  size2; break;
+       case Py_LE: c = size1 <= size2; break;
+       case Py_EQ: c = size1 == size2; break;
+       case Py_NE: c = size1 != size2; break;
+       case Py_GT: c = size1 >  size2; break;
+       case Py_GE: c = size1 >= size2; break;
        }
-       else if (obj1->obj_UnderlyingDatatypePtr->size >
-                obj2->obj_UnderlyingDatatypePtr->size) {
-           result = 1;
-       }
-       else {
-           result = 0;
-       }
+       result = c ? Py_True : Py_False;
+       Py_INCREF(result);
        return result;
-   }
+    }
 
 
 Abstract Protocol Support
@@ -1399,7 +1330,7 @@ instance of your data type. Here is a moderately pointless example::
 
 This function is called when an instance of your data type is "called", for
 example, if ``obj1`` is an instance of your data type and the Python script
-contains ``obj1('hello')``, the :c:member:`~PyTypeObject.tp_call` handler is invoked.
+contains ``obj1('hello')``, the :attr:`tp_call` handler is invoked.
 
 This function takes three arguments:
 
@@ -1433,17 +1364,15 @@ Here is a desultory example of the implementation of the call function. ::
        if (!PyArg_ParseTuple(args, "sss:call", &arg1, &arg2, &arg3)) {
            return NULL;
        }
-       result = PyString_FromFormat(
+       result = PyUnicode_FromFormat(
            "Returning -- value: [\%d] arg1: [\%s] arg2: [\%s] arg3: [\%s]\n",
            obj->obj_UnderlyingDatatypePtr->size,
            arg1, arg2, arg3);
-       printf("\%s", PyString_AS_STRING(result));
        return result;
    }
 
 XXX some fields need to be added here... ::
 
-   /* Added in release 2.2 */
    /* Iterators */
    getiterfunc tp_iter;
    iternextfunc tp_iternext;
@@ -1488,7 +1417,7 @@ those objects which do not benefit by weak referencing (such as numbers).
 For an object to be weakly referencable, the extension must include a
 :c:type:`PyObject\*` field in the instance structure for the use of the weak
 reference mechanism; it must be initialized to *NULL* by the object's
-constructor.  It must also set the :c:member:`~PyTypeObject.tp_weaklistoffset` field of the
+constructor.  It must also set the :attr:`tp_weaklistoffset` field of the
 corresponding type object to the offset of the field. For example, the instance
 type is defined with the following structure::
 
@@ -1502,7 +1431,7 @@ type is defined with the following structure::
 The statically-declared type object for instances is defined this way::
 
    PyTypeObject PyInstance_Type = {
-       PyObject_HEAD_INIT(&PyType_Type)
+       PyVarObject_HEAD_INIT(&PyType_Type, 0)
        0,
        "module.instance",
 
@@ -1555,10 +1484,10 @@ provide.  They are in :file:`object.h` in the Python include directory that
 comes with the source distribution of Python.
 
 In order to learn how to implement any specific method for your new data type,
-do the following: Download and unpack the Python source distribution.  Go the
-:file:`Objects` directory, then search the C source files for ``tp_`` plus the
-function you want (for example, ``tp_print`` or ``tp_compare``).  You will find
-examples of the function you want to implement.
+do the following: Download and unpack the Python source distribution.  Go to
+the :file:`Objects` directory, then search the C source files for ``tp_`` plus
+the function you want (for example, ``tp_richcompare``).  You will find examples
+of the function you want to implement.
 
 When you need to verify that an object is an instance of the type you are
 implementing, use the :c:func:`PyObject_TypeCheck` function. A sample of its use
@@ -1574,7 +1503,7 @@ might be something like the following::
 .. [#] This is true when we know that the object is a basic type, like a string or a
    float.
 
-.. [#] We relied on this in the :c:member:`~PyTypeObject.tp_dealloc` handler in this example, because our
+.. [#] We relied on this in the :attr:`tp_dealloc` handler in this example, because our
    type doesn't support garbage collection. Even if a type supports garbage
    collection, there are calls that can be made to "untrack" the object from
    garbage collection, however, these calls are advanced and not covered here.
@@ -1588,3 +1517,4 @@ might be something like the following::
 .. [#] Even in the third version, we aren't guaranteed to avoid cycles.  Instances of
    string subclasses are allowed and string subclasses could allow cycles even if
    normal strings don't.
+

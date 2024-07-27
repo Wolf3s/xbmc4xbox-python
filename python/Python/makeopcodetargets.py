@@ -24,8 +24,9 @@ def write_contents(f):
     targets = ['_unknown_opcode'] * 256
     for opname, op in opcode.opmap.items():
         if opname == "STOP_CODE":
+            # XXX opcode not implemented
             continue
-        targets[op] = "TARGET_%s" % opname.replace("+0", " ").replace("+", "_")
+        targets[op] = "TARGET_%s" % opname
     f.write("static void *opcode_targets[256] = {\n")
     f.write(",\n".join(["    &&%s" % s for s in targets]))
     f.write("\n};\n")

@@ -23,11 +23,6 @@
 Introduction
 ============
 
-The :mod:`re` module was added in Python 1.5, and provides Perl-style regular
-expression patterns.  Earlier versions of Python came with the :mod:`regex`
-module, which provided Emacs-style patterns.  The :mod:`regex` module was
-removed completely in Python 2.5.
-
 Regular expressions (called REs, or regexes, or regex patterns) are essentially
 a tiny, highly specialized programming language embedded inside Python and made
 available through the :mod:`re` module. Using this little language, you specify
@@ -79,9 +74,7 @@ of the RE by repeating them or changing their meaning.  Much of this document is
 devoted to discussing various metacharacters and what they do.
 
 Here's a complete list of the metacharacters; their meanings will be discussed
-in the rest of this HOWTO.
-
-.. code-block:: none
+in the rest of this HOWTO. ::
 
    . ^ $ * + ? { } [ ] \ | ( )
 
@@ -101,9 +94,8 @@ special nature.
 
 You can match the characters not listed within the class by :dfn:`complementing`
 the set.  This is indicated by including a ``'^'`` as the first character of the
-class. For example, ``[^5]`` will match any character except ``'5'``.  If the
-caret appears elsewhere in a character class, it does not have special meaning.
-For example: ``[5^]`` will match either a ``'5'`` or a ``'^'``.
+class; ``'^'`` outside a character class will simply match the ``'^'``
+character.  For example, ``[^5]`` will match any character except ``'5'``.
 
 Perhaps the most important metacharacter is the backslash, ``\``.   As in Python
 string literals, the backslash can be followed by various characters to signal
@@ -116,7 +108,7 @@ Some of the special sequences beginning with ``'\'`` represent predefined sets
 of characters that are often useful, such as the set of digits, the set of
 letters, or the set of anything that isn't whitespace.  The following predefined
 special sequences are a subset of those available. The equivalent classes are
-for byte string patterns. For a complete list of sequences and expanded class
+for bytes patterns. For a complete list of sequences and expanded class
 definitions for Unicode string patterns, see the last part of
 :ref:`Regular Expression Syntax <re-syntax>`.
 
@@ -175,7 +167,7 @@ that limit.
 Repetitions such as ``*`` are :dfn:`greedy`; when repeating a RE, the matching
 engine will try to repeat it as many times as possible. If later portions of the
 pattern don't match, the matching engine will then back up and try again with
-fewer repetitions.
+few repetitions.
 
 A step-by-step example will make this more obvious.  Let's consider the
 expression ``a[bcd]*b``.  This matches the letter ``'a'``, zero or more letters
@@ -367,8 +359,8 @@ containing information about the match: where it starts and ends, the substring
 it matched, and more.
 
 You can learn about this by interactively experimenting with the :mod:`re`
-module.  If you have Tkinter available, you may also want to look at
-:source:`Tools/scripts/redemo.py`, a demonstration program included with the
+module.  If you have :mod:`tkinter` available, you may also want to look at
+:source:`Tools/demo/redemo.py`, a demonstration program included with the
 Python distribution.  It allows you to enter REs and strings, and displays
 whether the RE matches or fails. :file:`redemo.py` can be quite useful when
 trying to debug a complicated RE.  Phil Schwartz's `Kodos
@@ -378,7 +370,6 @@ testing RE patterns.
 This HOWTO uses the standard Python interpreter for its examples. First, run the
 Python interpreter, import the :mod:`re` module, and compile a RE::
 
-   Python 2.2.2 (#1, Feb 10 2003, 12:57:01)
    >>> import re
    >>> p = re.compile('[a-z]+')
    >>> p  #doctest: +ELLIPSIS
@@ -391,7 +382,7 @@ interpreter to print no output.  You can explicitly print the result of
 :meth:`match` to make this clear. ::
 
    >>> p.match("")
-   >>> print p.match("")
+   >>> print(p.match(""))
    None
 
 Now, let's try it on a string that it should match, such as ``tempo``.  In this
@@ -436,9 +427,9 @@ will always be zero.  However, the :meth:`search` method of patterns
 scans through the string, so  the match may not start at zero in that
 case. ::
 
-   >>> print p.match('::: message')
+   >>> print(p.match('::: message'))
    None
-   >>> m = p.search('::: message'); print m  #doctest: +ELLIPSIS
+   >>> m = p.search('::: message'); print(m)  #doctest: +ELLIPSIS
    <_sre.SRE_Match object at 0x...>
    >>> m.group()
    'message'
@@ -452,9 +443,9 @@ In actual programs, the most common style is to store the
    p = re.compile( ... )
    m = p.match( 'string goes here' )
    if m:
-       print 'Match found: ', m.group()
+       print('Match found: ', m.group())
    else:
-       print 'No match'
+       print('No match')
 
 Two pattern methods return all of the matches for a pattern.
 :meth:`findall` returns a list of matching strings::
@@ -465,13 +456,13 @@ Two pattern methods return all of the matches for a pattern.
 
 :meth:`findall` has to create the entire list before it can be returned as the
 result.  The :meth:`finditer` method returns a sequence of
-:ref:`match object <match-objects>` instances as an :term:`iterator`. [#]_ ::
+:ref:`match object <match-objects>` instances as an :term:`iterator`::
 
    >>> iterator = p.finditer('12 drummers drumming, 11 ... 10 ...')
    >>> iterator  #doctest: +ELLIPSIS
-   <callable-iterator object at 0x...>
+   <callable_iterator object at 0x...>
    >>> for match in iterator:
-   ...     print match.span()
+   ...     print(match.span())
    ...
    (0, 2)
    (22, 24)
@@ -488,7 +479,7 @@ take the same arguments as the corresponding pattern method, with
 the RE string added as the first argument, and still return either ``None`` or a
 :ref:`match object <match-objects>` instance. ::
 
-   >>> print re.match(r'From\s+', 'Fromage amk')
+   >>> print(re.match(r'From\s+', 'Fromage amk'))
    None
    >>> re.match(r'From\s+', 'From amk Thu May 14 19:12:10 1998')  #doctest: +ELLIPSIS
    <_sre.SRE_Match object at 0x...>
@@ -505,7 +496,7 @@ more convenient.  If a program contains a lot of regular expressions, or re-uses
 the same ones in several locations, then it might be worthwhile to collect all
 the definitions in one place, in a section of code that compiles all the REs
 ahead of time.  To take an example from the standard library, here's an extract
-from the deprecated :mod:`xmllib` module::
+from the now-defunct Python 2 standard :mod:`xmllib` module::
 
    ref = re.compile( ... )
    entityref = re.compile( ... )
@@ -546,9 +537,9 @@ of each one.
 | :const:`VERBOSE`, :const:`X`    | Enable verbose REs, which can be organized |
 |                                 | more cleanly and understandably.           |
 +---------------------------------+--------------------------------------------+
-| :const:`UNICODE`, :const:`U`    | Makes several escapes like ``\w``, ``\b``, |
-|                                 | ``\s`` and ``\d`` dependent on the Unicode |
-|                                 | character database.                        |
+| :const:`ASCII`, :const:`A`      | Makes several escapes like ``\w``, ``\b``, |
+|                                 | ``\s`` and ``\d`` match only on ASCII      |
+|                                 | characters with the respective property.   |
 +---------------------------------+--------------------------------------------+
 
 
@@ -604,12 +595,13 @@ of each one.
    newline; without this flag, ``'.'`` will match anything *except* a newline.
 
 
-.. data:: U
-          UNICODE
+.. data:: A
+          ASCII
    :noindex:
 
-   Make ``\w``, ``\W``, ``\b``, ``\B``, ``\d``, ``\D``, ``\s`` and ``\S``
-   dependent on the Unicode character properties database.
+   Make ``\w``, ``\W``, ``\b``, ``\B``, ``\s`` and ``\S`` perform ASCII-only
+   matching instead of full Unicode matching. This is only meaningful for
+   Unicode patterns, and is ignored for byte patterns.
 
 
 .. data:: X
@@ -691,9 +683,9 @@ given location, they can obviously be matched an infinite number of times.
    For example, if you wish to match the word ``From`` only at the beginning of a
    line, the RE to use is ``^From``. ::
 
-      >>> print re.search('^From', 'From Here to Eternity')  #doctest: +ELLIPSIS
+      >>> print(re.search('^From', 'From Here to Eternity'))  #doctest: +ELLIPSIS
       <_sre.SRE_Match object at 0x...>
-      >>> print re.search('^From', 'Reciting From Memory')
+      >>> print(re.search('^From', 'Reciting From Memory'))
       None
 
    .. To match a literal \character{\^}, use \regexp{\e\^} or enclose it
@@ -703,11 +695,11 @@ given location, they can obviously be matched an infinite number of times.
    Matches at the end of a line, which is defined as either the end of the string,
    or any location followed by a newline character.     ::
 
-      >>> print re.search('}$', '{block}')  #doctest: +ELLIPSIS
+      >>> print(re.search('}$', '{block}'))  #doctest: +ELLIPSIS
       <_sre.SRE_Match object at 0x...>
-      >>> print re.search('}$', '{block} ')
+      >>> print(re.search('}$', '{block} '))
       None
-      >>> print re.search('}$', '{block}\n')  #doctest: +ELLIPSIS
+      >>> print(re.search('}$', '{block}\n'))  #doctest: +ELLIPSIS
       <_sre.SRE_Match object at 0x...>
 
    To match a literal ``'$'``, use ``\$`` or enclose it inside a character class,
@@ -732,11 +724,11 @@ given location, they can obviously be matched an infinite number of times.
    match when it's contained inside another word. ::
 
       >>> p = re.compile(r'\bclass\b')
-      >>> print p.search('no class at all')  #doctest: +ELLIPSIS
+      >>> print(p.search('no class at all'))  #doctest: +ELLIPSIS
       <_sre.SRE_Match object at 0x...>
-      >>> print p.search('the declassified algorithm')
+      >>> print(p.search('the declassified algorithm'))
       None
-      >>> print p.search('one subclass is')
+      >>> print(p.search('one subclass is'))
       None
 
    There are two subtleties you should remember when using this special sequence.
@@ -748,9 +740,9 @@ given location, they can obviously be matched an infinite number of times.
    in front of the RE string. ::
 
       >>> p = re.compile('\bclass\b')
-      >>> print p.search('no class at all')
+      >>> print(p.search('no class at all'))
       None
-      >>> print p.search('\b' + 'class' + '\b')  #doctest: +ELLIPSIS
+      >>> print(p.search('\b' + 'class' + '\b'))  #doctest: +ELLIPSIS
       <_sre.SRE_Match object at 0x...>
 
    Second, inside a character class, where there's no use for this assertion,
@@ -788,7 +780,7 @@ of a group with a repeating qualifier, such as ``*``, ``+``, ``?``, or
 ``ab``. ::
 
    >>> p = re.compile('(ab)*')
-   >>> print p.match('ababababab').span()
+   >>> print(p.match('ababababab').span())
    (0, 10)
 
 Groups indicated with ``'('``, ``')'`` also capture the starting and ending
@@ -841,7 +833,7 @@ backreferences in a RE.
 
 For example, the following RE detects doubled words in a string. ::
 
-   >>> p = re.compile(r'\b(\w+)\s+\1\b')
+   >>> p = re.compile(r'(\b\w+)\s+\1')
    >>> p.search('Paris in the the spring').group()
    'the the'
 
@@ -948,9 +940,9 @@ number of the group.  There's naturally a variant that uses the group name
 instead of the number. This is another Python extension: ``(?P=name)`` indicates
 that the contents of the group called *name* should again be matched at the
 current point.  The regular expression for finding doubled words,
-``\b(\w+)\s+\1\b`` can also be written as ``\b(?P<word>\w+)\s+(?P=word)\b``::
+``(\b\w+)\s+\1`` can also be written as ``(?P<word>\b\w+)\s+(?P=word)``::
 
-   >>> p = re.compile(r'\b(?P<word>\w+)\s+(?P=word)\b')
+   >>> p = re.compile(r'(?P<word>\b\w+)\s+(?P=word)')
    >>> p.search('Paris in the the spring').group()
    'the the'
 
@@ -1018,18 +1010,17 @@ confusing.
 
 A negative lookahead cuts through all this confusion:
 
-``.*[.](?!bat$)[^.]*$``  The negative lookahead means: if the expression ``bat``
+``.*[.](?!bat$).*$``  The negative lookahead means: if the expression ``bat``
 doesn't match at this point, try the rest of the pattern; if ``bat$`` does
 match, the whole pattern will fail.  The trailing ``$`` is required to ensure
 that something like ``sample.batch``, where the extension only starts with
-``bat``, will be allowed.  The ``[^.]*`` makes sure that the pattern works
-when there are multiple dots in the filename.
+``bat``, will be allowed.
 
 Excluding another filename extension is now easy; simply add it as an
 alternative inside the assertion.  The following pattern excludes filenames that
 end in either ``bat`` or ``exe``:
 
-``.*[.](?!bat$|exe$)[^.]*$``
+``.*[.](?!bat$|exe$).*$``
 
 
 Modifying Strings
@@ -1130,19 +1121,19 @@ which can be either a string or a function, and the string to be processed.
 Here's a simple example of using the :meth:`sub` method.  It replaces colour
 names with the word ``colour``::
 
-   >>> p = re.compile('(blue|white|red)')
-   >>> p.sub('colour', 'blue socks and red shoes')
+   >>> p = re.compile( '(blue|white|red)')
+   >>> p.sub( 'colour', 'blue socks and red shoes')
    'colour socks and colour shoes'
-   >>> p.sub('colour', 'blue socks and red shoes', count=1)
+   >>> p.sub( 'colour', 'blue socks and red shoes', count=1)
    'colour socks and red shoes'
 
 The :meth:`subn` method does the same work, but returns a 2-tuple containing the
 new string value and the number of replacements  that were performed::
 
-   >>> p = re.compile('(blue|white|red)')
-   >>> p.subn('colour', 'blue socks and red shoes')
+   >>> p = re.compile( '(blue|white|red)')
+   >>> p.subn( 'colour', 'blue socks and red shoes')
    ('colour socks and colour shoes', 2)
-   >>> p.subn('colour', 'no colours at all')
+   >>> p.subn( 'colour', 'no colours at all')
    ('no colours at all', 0)
 
 Empty matches are replaced only when they're not adjacent to a previous match.
@@ -1255,17 +1246,17 @@ It's important to keep this distinction in mind.  Remember,  :func:`match` will
 only report a successful match which will start at 0; if the match wouldn't
 start at zero,  :func:`match` will *not* report it. ::
 
-   >>> print re.match('super', 'superstition').span()
+   >>> print(re.match('super', 'superstition').span())
    (0, 5)
-   >>> print re.match('super', 'insuperable')
+   >>> print(re.match('super', 'insuperable'))
    None
 
 On the other hand, :func:`search` will scan forward through the string,
 reporting the first match it finds. ::
 
-   >>> print re.search('super', 'superstition').span()
+   >>> print(re.search('super', 'superstition').span())
    (0, 5)
-   >>> print re.search('super', 'insuperable').span()
+   >>> print(re.search('super', 'insuperable').span())
    (2, 7)
 
 Sometimes you'll be tempted to keep using :func:`re.match`, and just add ``.*``
@@ -1294,9 +1285,9 @@ doesn't work because of the greedy nature of ``.*``. ::
    >>> s = '<html><head><title>Title</title>'
    >>> len(s)
    32
-   >>> print re.match('<.*>', s).span()
+   >>> print(re.match('<.*>', s).span())
    (0, 32)
-   >>> print re.match('<.*>', s).group()
+   >>> print(re.match('<.*>', s).group())
    <html><head><title>Title</title>
 
 The RE matches the ``'<'`` in ``<html>``, and the ``.*`` consumes the rest of
@@ -1312,7 +1303,7 @@ example, the ``'>'`` is tried immediately after the first ``'<'`` matches, and
 when it fails, the engine advances a character at a time, retrying the ``'>'``
 at every step.  This produces just the right result::
 
-   >>> print re.match('<.*?>', s).group()
+   >>> print(re.match('<.*?>', s).group())
    <html>
 
 (Note that parsing HTML or XML with regular expressions is painful.
@@ -1323,7 +1314,7 @@ be *very* complicated.  Use an HTML or XML parser module for such tasks.)
 
 
 Using re.VERBOSE
---------------------
+----------------
 
 By now you've probably noticed that regular expressions are a very compact
 notation, but they're not terribly readable.  REs of moderate complexity can
@@ -1371,9 +1362,4 @@ and doesn't contain any Python material at all, so it won't be useful as a
 reference for programming in Python.  (The first edition covered Python's
 now-removed :mod:`regex` module, which won't help you much.)  Consider checking
 it out from your library.
-
-
-.. rubric:: Footnotes
-
-.. [#] Introduced in Python 2.2.2.
 

@@ -2,7 +2,7 @@
 
 # Module and documentation by Eric S. Raymond, 21 Dec 1998
 
-import os, stat, shlex
+import os, shlex, stat
 if os.name == 'posix':
     import pwd
 
@@ -40,15 +40,13 @@ class netrc:
         lexer.commenters = lexer.commenters.replace('#', '')
         while 1:
             # Look for a machine, default, or macdef top-level keyword
+            saved_lineno = lexer.lineno
             toplevel = tt = lexer.get_token()
             if not tt:
                 break
             elif tt[0] == '#':
-                # seek to beginning of comment, in case reading the token put
-                # us on a new line, and then skip the rest of the line.
-                pos = len(tt) + 1
-                lexer.instream.seek(-pos, 1)
-                lexer.instream.readline()
+                if lexer.lineno == saved_lineno and len(tt) == 1:
+                    lexer.instream.readline()
                 continue
             elif tt == 'machine':
                 entryname = lexer.get_token()
@@ -130,16 +128,16 @@ class netrc:
         rep = ""
         for host in self.hosts.keys():
             attrs = self.hosts[host]
-            rep += "machine {host}\n\tlogin {attrs[0]}\n".format(host=host, attrs=attrs)
+            rep = rep + "machine "+ host + "\n\tlogin " + repr(attrs[0]) + "\n"
             if attrs[1]:
-                rep += "\taccount {attrs[1]}\n".format(attrs=attrs)
-            rep += "\tpassword {attrs[2]}\n".format(attrs=attrs)
+                rep = rep + "account " + repr(attrs[1])
+            rep = rep + "\tpassword " + repr(attrs[2]) + "\n"
         for macro in self.macros.keys():
-            rep += "macdef {macro}\n".format(macro=macro)
+            rep = rep + "macdef " + macro + "\n"
             for line in self.macros[macro]:
-                rep += line
-            rep += "\n"
+                rep = rep + line
+            rep = rep + "\n"
         return rep
 
 if __name__ == '__main__':
-    print netrc()
+    print(netrc())

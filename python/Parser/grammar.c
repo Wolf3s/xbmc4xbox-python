@@ -9,10 +9,6 @@
 #include "token.h"
 #include "grammar.h"
 
-#ifdef RISCOS
-#include <unixlib.h>
-#endif
-
 extern int Py_DebugFlag;
 
 grammar *
@@ -30,24 +26,6 @@ newgrammar(int start)
     g->g_ll.ll_label = NULL;
     g->g_accel = 0;
     return g;
-}
-
-void
-freegrammar(grammar *g)
-{
-    int i;
-    for (i = 0; i < g->g_ndfas; i++) {
-        int j;
-        free(g->g_dfa[i].d_name);
-        for (j = 0; j < g->g_dfa[i].d_nstates; j++)
-            PyObject_FREE(g->g_dfa[i].d_state[j].s_arc);
-        PyObject_FREE(g->g_dfa[i].d_state);
-    }
-    PyObject_FREE(g->g_dfa);
-    for (i = 0; i < g->g_ll.ll_nlabels; i++)
-        free(g->g_ll.ll_label[i].lb_str);
-    PyObject_FREE(g->g_ll.ll_label);
-    PyObject_FREE(g);
 }
 
 dfa *

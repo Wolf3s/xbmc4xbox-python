@@ -406,18 +406,12 @@ PyDoc_STRVAR(stringio_seek_doc,
 static PyObject *
 stringio_seek(stringio *self, PyObject *args)
 {
-    PyObject *posobj;
     Py_ssize_t pos;
     int mode = 0;
 
     CHECK_INITIALIZED(self);
-    if (!PyArg_ParseTuple(args, "O|i:seek", &posobj, &mode))
+    if (!PyArg_ParseTuple(args, "n|i:seek", &pos, &mode))
         return NULL;
-
-    pos = PyNumber_AsSsize_t(posobj, PyExc_OverflowError);
-    if (pos == -1 && PyErr_Occurred())
-        return NULL;
-    
     CHECK_CLOSED(self);
 
     if (mode != 0 && mode != 1 && mode != 2) {
@@ -464,7 +458,7 @@ stringio_write(stringio *self, PyObject *obj)
 
     CHECK_INITIALIZED(self);
     if (!PyUnicode_Check(obj)) {
-        PyErr_Format(PyExc_TypeError, "unicode argument expected, got '%s'",
+        PyErr_Format(PyExc_TypeError, "string argument expected, got '%s'",
                      Py_TYPE(obj)->tp_name);
         return NULL;
     }
@@ -555,23 +549,43 @@ stringio_init(stringio *self, PyObject *args, PyObject *kwds)
 {
     char *kwlist[] = {"initial_value", "newline", NULL};
     PyObject *value = NULL;
+    PyObject *newline_obj = NULL;
     char *newline = "\n";
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|Oz:__init__", kwlist,
-                                     &value, &newline))
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|OO:__init__", kwlist,
+                                     &value, &newline_obj))
         return -1;
+
+    /* Parse the newline argument. This used to be done with the 'z'
+       specifier, however this allowed any object with the buffer interface to
+       be converted. Thus we have to parse it manually since we only want to
+       allow unicode objects or None. */
+    if (newline_obj == Py_None) {
+        newline = NULL;
+    }
+    else if (newline_obj) {
+        if (!PyUnicode_Check(newline_obj)) {
+            PyErr_Format(PyExc_TypeError,
+                         "newline must be str or None, not %.200s",
+                         Py_TYPE(newline_obj)->tp_name);
+            return -1;
+        }
+        newline = _PyUnicode_AsString(newline_obj);
+        if (newline == NULL)
+            return -1;
+    }
 
     if (newline && newline[0] != '\0'
         && !(newline[0] == '\n' && newline[1] == '\0')
         && !(newline[0] == '\r' && newline[1] == '\0')
         && !(newline[0] == '\r' && newline[1] == '\n' && newline[2] == '\0')) {
         PyErr_Format(PyExc_ValueError,
-                     "illegal newline value: %s", newline);
+                     "illegal newline value: %R", newline_obj);
         return -1;
     }
     if (value && value != Py_None && !PyUnicode_Check(value)) {
         PyErr_Format(PyExc_TypeError,
-                     "initial_value must be unicode or None, not %.200s",
+                     "initial_value must be str or None, not %.200s",
                      Py_TYPE(value)->tp_name);
         return -1;
     }
@@ -582,8 +596,11 @@ stringio_init(stringio *self, PyObject *args, PyObject *kwds)
     Py_CLEAR(self->writenl);
     Py_CLEAR(self->decoder);
 
+    assert((newline != NULL && newline_obj != Py_None) ||
+           (newline == NULL && newline_obj == Py_None));
+
     if (newline) {
-        self->readnl = PyString_FromString(newline);
+        self->readnl = PyUnicode_FromString(newline);
         if (self->readnl == NULL)
             return -1;
     }
@@ -596,7 +613,8 @@ stringio_init(stringio *self, PyObject *args, PyObject *kwds)
        is pointless for StringIO)
     */
     if (newline != NULL && newline[0] == '\r') {
-        self->writenl = PyUnicode_FromString(newline);
+        self->writenl = self->readnl;
+        Py_INCREF(self->writenl);
     }
 
     if (self->readuniversal) {
@@ -693,10 +711,8 @@ stringio_getstate(stringio *self)
     }
     else {
         dict = PyDict_Copy(self->dict);
-        if (dict == NULL) {
-            Py_DECREF(initvalue);
+        if (dict == NULL)
             return NULL;
-        }
     }
 
     state = Py_BuildValue("(OOnN)", initvalue,
@@ -738,8 +754,8 @@ stringio_setstate(stringio *self, PyObject *state)
     Py_DECREF(initarg);
 
     /* Restore the buffer state. Even if __init__ did initialize the buffer,
-       we have to initialize it again since __init__ may translate the
-       newlines in the initial_value string. We clearly do not want that
+       we have to initialize it again since __init__ may translates the
+       newlines in the inital_value string. We clearly do not want that
        because the string value in the state tuple has already been translated
        once by __init__. So we do not take any chance and replace object's
        buffer completely. */
@@ -756,13 +772,13 @@ stringio_setstate(stringio *self, PyObject *state)
        method instead of modifying self->pos directly to better protect the
        object internal state against errneous (or malicious) inputs. */
     position_obj = PyTuple_GET_ITEM(state, 2);
-    if (!PyIndex_Check(position_obj)) {
+    if (!PyLong_Check(position_obj)) {
         PyErr_Format(PyExc_TypeError,
                      "third item of state must be an integer, got %.200s",
                      Py_TYPE(position_obj)->tp_name);
         return NULL;
     }
-    pos = PyNumber_AsSsize_t(position_obj, PyExc_OverflowError);
+    pos = PyLong_AsSsize_t(position_obj);
     if (pos == -1 && PyErr_Occurred())
         return NULL;
     if (pos < 0) {

@@ -43,9 +43,10 @@ separating others.
 str/unicode Unification
 -----------------------
 
-Python 3's :func:`str` type is equivalent to Python 2's :func:`unicode`; the C
-functions are called ``PyUnicode_*`` for both.  The old 8-bit string type has become
-:func:`bytes`, with C functions called ``PyBytes_*``.  Python 2.6 and later provide a compatibility header,
+
+Python 3's :func:`str` (``PyString_*`` functions in C) type is equivalent to
+Python 2's :func:`unicode` (``PyUnicode_*``).  The old 8-bit string type has
+become :func:`bytes`.  Python 2.6 and later provide a compatibility header,
 :file:`bytesobject.h`, mapping ``PyBytes`` names to ``PyString`` ones.  For best
 compatibility with Python 3, :c:type:`PyUnicode` should be used for textual data and
 :c:type:`PyBytes` for binary data.  It's also important to remember that
@@ -95,9 +96,28 @@ long/int Unification
 --------------------
 
 Python 3 has only one integer type, :func:`int`.  But it actually
-corresponds to Python 2's :func:`long` type—the :func:`int` type
+corresponds to Python 2's :func:`long` type--the :func:`int` type
 used in Python 2 was removed.  In the C-API, ``PyInt_*`` functions
 are replaced by their ``PyLong_*`` equivalents.
+
+The best course of action here is using the ``PyInt_*`` functions aliased to
+``PyLong_*`` found in :file:`intobject.h`.  The abstract ``PyNumber_*`` APIs
+can also be used in some cases. ::
+
+   #include "Python.h"
+   #include "intobject.h"
+
+   static PyObject *
+   add_ints(PyObject *self, PyObject *args) {
+       int one, two;
+       PyObject *result;
+
+       if (!PyArg_ParseTuple(args, "ii:add_ints", &one, &two))
+           return NULL;
+
+       return PyInt_FromLong(one + two);
+   }
+
 
 
 Module initialization and state
@@ -161,7 +181,7 @@ simple example demonstrates how. ::
 
    #define INITERROR return NULL
 
-   PyMODINIT_FUNC
+   PyObject *
    PyInit_myextension(void)
 
    #else
@@ -252,6 +272,6 @@ Other options
 =============
 
 If you are writing a new extension module, you might consider `Cython
-<http://cython.org/>`_.  It translates a Python-like language to C.  The
+<http://www.cython.org>`_.  It translates a Python-like language to C.  The
 extension modules it creates are compatible with Python 3 and Python 2.
 

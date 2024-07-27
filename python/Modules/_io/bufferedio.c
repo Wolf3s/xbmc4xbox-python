@@ -69,7 +69,7 @@ bufferediobase_readinto(PyObject *self, PyObject *args)
 static PyObject *
 bufferediobase_unsupported(const char *message)
 {
-    PyErr_SetString(_PyIO_unsupported_operation, message);
+    PyErr_SetString(IO_STATE->unsupported_operation, message);
     return NULL;
 }
 
@@ -125,7 +125,8 @@ bufferediobase_read1(PyObject *self, PyObject *args)
 PyDoc_STRVAR(bufferediobase_write_doc,
     "Write the given buffer to the IO stream.\n"
     "\n"
-    "Returns the number of bytes written, which is always len(b).\n"
+    "Returns the number of bytes written, which is never less than\n"
+    "len(b).\n"
     "\n"
     "Raises BlockingIOError if the buffer is full and the\n"
     "underlying raw stream cannot accept more data at the moment.\n");
@@ -196,6 +197,7 @@ typedef struct {
     int detached;
     int readable;
     int writable;
+    int deallocating;
     
     /* True if this is a vanilla Buffered object (rather than a user derived
        class) *and* the raw stream is a vanilla FileIO object. */
@@ -264,13 +266,8 @@ static int
 _enter_buffered_busy(buffered *self)
 {
     if (self->owner == PyThread_get_thread_ident()) {
-        PyObject *r = PyObject_Repr((PyObject *) self);
-        if (r != NULL) {
-            PyErr_Format(PyExc_RuntimeError,
-                         "reentrant call inside %s",
-                         PyString_AS_STRING(r));
-            Py_DECREF(r);
-        }
+        PyErr_Format(PyExc_RuntimeError,
+                     "reentrant call inside %R", self);
         return 0;
     }
     Py_BEGIN_ALLOW_THREADS
@@ -364,6 +361,7 @@ _enter_buffered_busy(buffered *self)
 static void
 buffered_dealloc(buffered *self)
 {
+    self->deallocating = 1;
     if (self->ok && _PyIOBase_finalize((PyObject *) self) < 0)
         return;
     _PyObject_GC_UNTRACK(self);
@@ -390,7 +388,7 @@ buffered_sizeof(buffered *self, void *unused)
 {
     Py_ssize_t res;
 
-    res = _PyObject_SIZE(Py_TYPE(self));
+    res = sizeof(buffered);
     if (self->buffer)
         res += self->buffer_size;
     return PyLong_FromSsize_t(res);
@@ -413,6 +411,23 @@ buffered_clear(buffered *self)
     Py_CLEAR(self->raw);
     Py_CLEAR(self->dict);
     return 0;
+}
+
+/* Because this can call arbitrary code, it shouldn't be called when
+   the refcount is 0 (that is, not directly from tp_dealloc unless
+   the refcount has been temporarily re-incremented). */
+static PyObject *
+buffered_dealloc_warn(buffered *self, PyObject *source)
+{
+    if (self->ok && self->raw) {
+        PyObject *r;
+        r = PyObject_CallMethod(self->raw, "_dealloc_warn", "O", source);
+        if (r)
+            Py_DECREF(r);
+        else
+            PyErr_Clear();
+    }
+    Py_RETURN_NONE;
 }
 
 /*
@@ -454,7 +469,7 @@ buffered_closed_get(buffered *self, void *context)
 static PyObject *
 buffered_close(buffered *self, PyObject *args)
 {
-    PyObject *res = NULL, *exc = NULL, *val, *tb;
+    PyObject *res = NULL;
     int r;
 
     CHECK_INITIALIZED(self)
@@ -469,22 +484,25 @@ buffered_close(buffered *self, PyObject *args)
         Py_INCREF(res);
         goto end;
     }
+
+    if (self->deallocating) {
+        PyObject *r = buffered_dealloc_warn(self, (PyObject *) self);
+        if (r)
+            Py_DECREF(r);
+        else
+            PyErr_Clear();
+    }
     /* flush() will most probably re-take the lock, so drop it first */
     LEAVE_BUFFERED(self)
     res = PyObject_CallMethodObjArgs((PyObject *)self, _PyIO_str_flush, NULL);
     if (!ENTER_BUFFERED(self))
         return NULL;
-    if (res == NULL)
-        PyErr_Fetch(&exc, &val, &tb);
-    else
-        Py_DECREF(res);
+    if (res == NULL) {
+        goto end;
+    }
+    Py_XDECREF(res);
 
     res = PyObject_CallMethodObjArgs(self->raw, _PyIO_str_close, NULL);
-
-    if (exc != NULL) {
-        _PyErr_ReplaceException(exc, val, tb);
-        Py_CLEAR(res);
-    }
 
 end:
     LEAVE_BUFFERED(self)
@@ -562,6 +580,15 @@ buffered_isatty(buffered *self, PyObject *args)
     return PyObject_CallMethodObjArgs(self->raw, _PyIO_str_isatty, NULL);
 }
 
+/* Serialization */
+
+static PyObject *
+buffered_getstate(buffered *self, PyObject *args)
+{
+    PyErr_Format(PyExc_TypeError,
+                 "cannot serialize '%s' object", Py_TYPE(self)->tp_name);
+    return NULL;
+}
 
 /* Forward decls */
 static PyObject *
@@ -1027,7 +1054,8 @@ found:
         Py_CLEAR(res);
         goto end;
     }
-    Py_XSETREF(res, _PyBytes_Join(_PyIO_empty_bytes, chunks));
+    Py_CLEAR(res);
+    res = _PyBytes_Join(_PyIO_empty_bytes, chunks);
 
 end:
     LEAVE_BUFFERED(self)
@@ -1080,6 +1108,9 @@ buffered_seek(buffered *self, PyObject *args)
     }
 
     CHECK_CLOSED(self, "seek of closed file")
+
+    if (_PyIOBase_check_seekable(self->raw, Py_True) == NULL)
+        return NULL;
 
     target = PyNumber_AsOff_t(targetobj, PyExc_ValueError);
     if (target == -1 && PyErr_Occurred())
@@ -1213,21 +1244,16 @@ buffered_repr(buffered *self)
 
     nameobj = PyObject_GetAttrString((PyObject *) self, "name");
     if (nameobj == NULL) {
-        if (PyErr_ExceptionMatches(PyExc_Exception))
+        if (PyErr_ExceptionMatches(PyExc_AttributeError))
             PyErr_Clear();
         else
             return NULL;
-        res = PyString_FromFormat("<%s>", Py_TYPE(self)->tp_name);
+        res = PyUnicode_FromFormat("<%s>", Py_TYPE(self)->tp_name);
     }
     else {
-        PyObject *repr = PyObject_Repr(nameobj);
+        res = PyUnicode_FromFormat("<%s name=%R>",
+                                   Py_TYPE(self)->tp_name, nameobj);
         Py_DECREF(nameobj);
-        if (repr == NULL)
-            return NULL;
-        res = PyString_FromFormat("<%s name=%s>",
-                                   Py_TYPE(self)->tp_name,
-                                   PyString_AS_STRING(repr));
-        Py_DECREF(repr);
     }
     return res;
 }
@@ -1262,8 +1288,9 @@ bufferedreader_init(buffered *self, PyObject *args, PyObject *kwds)
     if (_PyIOBase_check_readable(raw, Py_True) == NULL)
         return -1;
 
+    Py_CLEAR(self->raw);
     Py_INCREF(raw);
-    Py_XSETREF(self->raw, raw);
+    self->raw = raw;
     self->buffer_size = buffer_size;
     self->readable = 1;
     self->writable = 0;
@@ -1363,7 +1390,6 @@ _bufferedreader_read_all(buffered *self)
         res = buffered_flush_and_rewind_unlocked(self);
         if (res == NULL) {
             Py_DECREF(chunks);
-            Py_XDECREF(data);
             return NULL;
         }
         Py_CLEAR(res);
@@ -1566,6 +1592,8 @@ static PyMethodDef bufferedreader_methods[] = {
     {"writable", (PyCFunction)buffered_writable, METH_NOARGS},
     {"fileno", (PyCFunction)buffered_fileno, METH_NOARGS},
     {"isatty", (PyCFunction)buffered_isatty, METH_NOARGS},
+    {"_dealloc_warn", (PyCFunction)buffered_dealloc_warn, METH_O},
+    {"__getstate__", (PyCFunction)buffered_getstate, METH_NOARGS},
 
     {"read", (PyCFunction)buffered_read, METH_VARARGS},
     {"peek", (PyCFunction)buffered_peek, METH_VARARGS},
@@ -1685,8 +1713,9 @@ bufferedwriter_init(buffered *self, PyObject *args, PyObject *kwds)
     if (_PyIOBase_check_writable(raw, Py_True) == NULL)
         return -1;
 
+    Py_CLEAR(self->raw);
     Py_INCREF(raw);
-    Py_XSETREF(self->raw, raw);
+    self->raw = raw;
     self->readable = 0;
     self->writable = 1;
 
@@ -1810,14 +1839,7 @@ bufferedwriter_write(buffered *self, PyObject *args)
     Py_off_t offset;
 
     CHECK_INITIALIZED(self)
-    if (!PyArg_ParseTuple(args, "s*:write", &buf)) {
-        return NULL;
-    }
-    if (PyUnicode_Check(PyTuple_GET_ITEM(args, 0)) &&
-        PyErr_WarnPy3k("write() argument must be string or buffer, "
-                       "not 'unicode'", 1) < 0)
-    {
-        PyBuffer_Release(&buf);
+    if (!PyArg_ParseTuple(args, "y*:write", &buf)) {
         return NULL;
     }
 
@@ -1967,6 +1989,8 @@ static PyMethodDef bufferedwriter_methods[] = {
     {"writable", (PyCFunction)buffered_writable, METH_NOARGS},
     {"fileno", (PyCFunction)buffered_fileno, METH_NOARGS},
     {"isatty", (PyCFunction)buffered_isatty, METH_NOARGS},
+    {"_dealloc_warn", (PyCFunction)buffered_dealloc_warn, METH_O},
+    {"__getstate__", (PyCFunction)buffered_getstate, METH_NOARGS},
 
     {"write", (PyCFunction)bufferedwriter_write, METH_VARARGS},
     {"truncate", (PyCFunction)buffered_truncate, METH_VARARGS},
@@ -2128,14 +2152,9 @@ bufferedrwpair_dealloc(rwpair *self)
 static PyObject *
 _forward_call(buffered *self, const char *name, PyObject *args)
 {
-    PyObject *func, *ret;
-    if (self == NULL) {
-        PyErr_SetString(PyExc_ValueError,
-                        "I/O operation on uninitialized object");
-        return NULL;
-    }
+    PyObject *func = PyObject_GetAttrString((PyObject *)self, name);
+    PyObject *ret;
 
-    func = PyObject_GetAttrString((PyObject *)self, name);
     if (func == NULL) {
         PyErr_SetString(PyExc_AttributeError, name);
         return NULL;
@@ -2197,25 +2216,12 @@ bufferedrwpair_writable(rwpair *self, PyObject *args)
 static PyObject *
 bufferedrwpair_close(rwpair *self, PyObject *args)
 {
-    PyObject *exc = NULL, *val, *tb;
     PyObject *ret = _forward_call(self->writer, "close", args);
     if (ret == NULL)
-        PyErr_Fetch(&exc, &val, &tb);
-    else
-        Py_DECREF(ret);
-    ret = _forward_call(self->reader, "close", args);
-    if (exc != NULL) {
-        if (ret != NULL) {
-            Py_CLEAR(ret);
-            PyErr_Restore(exc, val, tb);
-        }
-        else {
-            Py_DECREF(exc);
-            Py_XDECREF(val);
-            Py_XDECREF(tb);
-        }
-    }
-    return ret;
+        return NULL;
+    Py_DECREF(ret);
+
+    return _forward_call(self->reader, "close", args);
 }
 
 static PyObject *
@@ -2257,6 +2263,8 @@ static PyMethodDef bufferedrwpair_methods[] = {
 
     {"close", (PyCFunction)bufferedrwpair_close, METH_NOARGS},
     {"isatty", (PyCFunction)bufferedrwpair_isatty, METH_NOARGS},
+
+    {"__getstate__", (PyCFunction)buffered_getstate, METH_NOARGS},
 
     {NULL, NULL}
 };
@@ -2348,8 +2356,9 @@ bufferedrandom_init(buffered *self, PyObject *args, PyObject *kwds)
     if (_PyIOBase_check_writable(raw, Py_True) == NULL)
         return -1;
 
+    Py_CLEAR(self->raw);
     Py_INCREF(raw);
-    Py_XSETREF(self->raw, raw);
+    self->raw = raw;
     self->buffer_size = buffer_size;
     self->readable = 1;
     self->writable = 1;
@@ -2376,6 +2385,8 @@ static PyMethodDef bufferedrandom_methods[] = {
     {"writable", (PyCFunction)buffered_writable, METH_NOARGS},
     {"fileno", (PyCFunction)buffered_fileno, METH_NOARGS},
     {"isatty", (PyCFunction)buffered_isatty, METH_NOARGS},
+    {"_dealloc_warn", (PyCFunction)buffered_dealloc_warn, METH_O},
+    {"__getstate__", (PyCFunction)buffered_getstate, METH_NOARGS},
 
     {"flush", (PyCFunction)buffered_flush, METH_NOARGS},
 
@@ -2446,4 +2457,3 @@ PyTypeObject PyBufferedRandom_Type = {
     0,                          /* tp_alloc */
     PyType_GenericNew,          /* tp_new */
 };
-

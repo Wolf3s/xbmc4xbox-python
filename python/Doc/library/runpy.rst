@@ -5,9 +5,6 @@
    :synopsis: Locate and run Python modules without importing them first.
 .. moduleauthor:: Nick Coghlan <ncoghlan@gmail.com>
 
-
-.. versionadded:: 2.5
-
 **Source code:** :source:`Lib/runpy.py`
 
 --------------
@@ -17,13 +14,19 @@ importing them first. Its main use is to implement the :option:`-m` command
 line switch that allows scripts to be located using the Python module
 namespace rather than the filesystem.
 
+Note that this is *not* a sandbox module - all code is executed in the
+current process, and any side effects (such as cached imports of other
+modules) will remain in place after the functions have returned.
+
+Furthermore, any functions and classes defined by the executed code are not
+guaranteed to work correctly after a :mod:`runpy` function has returned.
+If that limitation is not acceptable for a given use case, :mod:`importlib`
+is likely to be a more suitable choice than this module.
+
 The :mod:`runpy` module provides two functions:
 
 
 .. function:: run_module(mod_name, init_globals=None, run_name=None, alter_sys=False)
-
-   .. index::
-      module: __main__
 
    Execute the code of the specified module and return the resulting module
    globals dictionary. The module's code is first located using the standard
@@ -41,7 +44,8 @@ The :mod:`runpy` module provides two functions:
    below are defined in the supplied dictionary, those definitions are
    overridden by :func:`run_module`.
 
-   The special global variables ``__name__``, ``__file__``, ``__loader__``
+   The special global variables ``__name__``, ``__file__``, ``__cached__``,
+   ``__loader__``
    and ``__package__`` are set in the globals dictionary before the module
    code is executed (Note that this is a minimal set of variables - other
    variables may be set implicitly as an interpreter implementation detail).
@@ -53,6 +57,8 @@ The :mod:`runpy` module provides two functions:
    ``__file__`` is set to the name provided by the module loader. If the
    loader does not make filename information available, this variable is set
    to :const:`None`.
+
+   ``__cached__`` will be set to ``None``.
 
    ``__loader__`` is set to the :pep:`302` module loader used to retrieve the
    code for the module (This loader may be a wrapper around the standard
@@ -72,19 +78,15 @@ The :mod:`runpy` module provides two functions:
    arguments. It is recommended that the :mod:`sys` module be left alone when
    invoking this function from threaded code.
 
-   .. seealso::
-      The :option:`-m` option offering equivalent functionality from the
-      command line.
 
-   .. versionchanged:: 2.7
-         Added ability to execute packages by looking for a ``__main__``
-         submodule
+   .. versionchanged:: 3.1
+      Added ability to execute packages by looking for a ``__main__`` submodule.
+
+   .. versionchanged:: 3.2
+      Added ``__cached__`` global variable (see :PEP:`3147`).
 
 
 .. function:: run_path(file_path, init_globals=None, run_name=None)
-
-   .. index::
-      module: __main__
 
    Execute the code at the named filesystem location and return the resulting
    module globals dictionary. As with a script name supplied to the CPython
@@ -137,18 +139,16 @@ The :mod:`runpy` module provides two functions:
    limitations still apply, use of this function in threaded code should be
    either serialised with the import lock or delegated to a separate process.
 
-   .. seealso::
-      :ref:`using-on-interface-options` for equivalent functionality on the
-      command line (``python path/to/script``).
-
-   .. versionadded:: 2.7
+   .. versionadded:: 3.2
 
 .. seealso::
 
-   :pep:`338` -- Executing modules as scripts
+   :pep:`338` - Executing modules as scripts
       PEP written and implemented by Nick Coghlan.
 
-   :pep:`366` -- Main module explicit relative imports
+   :pep:`366` - Main module explicit relative imports
       PEP written and implemented by Nick Coghlan.
 
    :ref:`using-on-general` - CPython command line details
+
+   The :func:`importlib.import_module` function

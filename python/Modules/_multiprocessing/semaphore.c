@@ -274,7 +274,7 @@ sem_timedwait_save(sem_t *sem, struct timespec *deadline, PyThreadState *_save)
 static PyObject *
 semlock_acquire(SemLockObject *self, PyObject *args, PyObject *kwds)
 {
-    int blocking = 1, res;
+    int blocking = 1, res, err = 0;
     double timeout;
     PyObject *timeout_obj = Py_None;
     struct timespec deadline = {0};
@@ -320,11 +320,13 @@ semlock_acquire(SemLockObject *self, PyObject *args, PyObject *kwds)
         else
             res = sem_timedwait(self->handle, &deadline);
         Py_END_ALLOW_THREADS
+        err = errno;
         if (res == MP_EXCEPTION_HAS_BEEN_SET)
             break;
     } while (res < 0 && errno == EINTR && !PyErr_CheckSignals());
 
     if (res < 0) {
+        errno = err;
         if (errno == EAGAIN || errno == ETIMEDOUT)
             Py_RETURN_FALSE;
         else if (errno == EINTR)
@@ -429,7 +431,7 @@ semlock_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     int kind, maxvalue, value;
     PyObject *result;
     static char *kwlist[] = {"kind", "value", "maxvalue", NULL};
-    int try = 0;
+    static int counter = 0;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "iii", kwlist,
                                      &kind, &value, &maxvalue))
@@ -440,18 +442,10 @@ semlock_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
-    /* Create a semaphore with a unique name. The bytes returned by
-     * _PyOS_URandom() are treated as unsigned long to ensure that the filename
-     * is valid (no special characters). */
-    do {
-        unsigned long suffix;
-        _PyOS_URandom((char *)&suffix, sizeof(suffix));
-        PyOS_snprintf(buffer, sizeof(buffer), "/mp%ld-%lu", (long)getpid(),
-                      suffix);
-        SEM_CLEAR_ERROR();
-        handle = SEM_CREATE(buffer, value, maxvalue);
-    } while ((handle == SEM_FAILED) && (errno == EEXIST) && (++try < 100));
+    PyOS_snprintf(buffer, sizeof(buffer), "/mp%ld-%d", (long)getpid(), counter++);
 
+    SEM_CLEAR_ERROR();
+    handle = SEM_CREATE(buffer, value, maxvalue);
     /* On Windows we should fail if GetLastError()==ERROR_ALREADY_EXISTS */
     if (handle == SEM_FAILED || SEM_GET_LAST_ERROR() != 0)
         goto failure;
@@ -607,7 +601,7 @@ PyTypeObject SemLockType = {
     /* tp_print          */ 0,
     /* tp_getattr        */ 0,
     /* tp_setattr        */ 0,
-    /* tp_compare        */ 0,
+    /* tp_reserved       */ 0,
     /* tp_repr           */ 0,
     /* tp_as_number      */ 0,
     /* tp_as_sequence    */ 0,

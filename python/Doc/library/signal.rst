@@ -1,4 +1,3 @@
-
 :mod:`signal` --- Set handlers for asynchronous events
 ======================================================
 
@@ -6,46 +5,58 @@
    :synopsis: Set handlers for asynchronous events.
 
 
-This module provides mechanisms to use signal handlers in Python. Some general
-rules for working with signals and their handlers:
+This module provides mechanisms to use signal handlers in Python.
 
-* A handler for a particular signal, once set, remains installed until it is
-  explicitly reset (Python emulates the BSD style interface regardless of the
-  underlying implementation), with the exception of the handler for
-  :const:`SIGCHLD`, which follows the underlying implementation.
 
-* There is no way to "block" signals temporarily from critical sections (since
-  this is not supported by all Unix flavors).
+General rules
+-------------
 
-* Although Python signal handlers are called asynchronously as far as the Python
-  user is concerned, they can only occur between the "atomic" instructions of the
-  Python interpreter.  This means that signals arriving during long calculations
-  implemented purely in C (such as regular expression matches on large bodies of
-  text) may be delayed for an arbitrary amount of time.
+The :func:`signal.signal` function allows to define custom handlers to be
+executed when a signal is received.  A small number of default handlers are
+installed: :const:`SIGPIPE` is ignored (so write errors on pipes and sockets
+can be reported as ordinary Python exceptions) and :const:`SIGINT` is
+translated into a :exc:`KeyboardInterrupt` exception.
 
-* When a signal arrives during an I/O operation, it is possible that the I/O
-  operation raises an exception after the signal handler returns. This is
-  dependent on the underlying Unix system's semantics regarding interrupted system
-  calls.
+A handler for a particular signal, once set, remains installed until it is
+explicitly reset (Python emulates the BSD style interface regardless of the
+underlying implementation), with the exception of the handler for
+:const:`SIGCHLD`, which follows the underlying implementation.
 
-* Because the C signal handler always returns, it makes little sense to catch
-  synchronous errors like :const:`SIGFPE` or :const:`SIGSEGV`.
+There is no way to "block" signals temporarily from critical sections (since
+this is not supported by all Unix flavors).
 
-* Python installs a small number of signal handlers by default: :const:`SIGPIPE`
-  is ignored (so write errors on pipes and sockets can be reported as ordinary
-  Python exceptions) and :const:`SIGINT` is translated into a
-  :exc:`KeyboardInterrupt` exception.  All of these can be overridden.
 
-* Some care must be taken if both signals and threads are used in the same
-  program.  The fundamental thing to remember in using signals and threads
-  simultaneously is: always perform :func:`signal` operations in the main thread
-  of execution.  Any thread can perform an :func:`alarm`, :func:`getsignal`,
-  :func:`pause`, :func:`setitimer` or :func:`getitimer`; only the main thread
-  can set a new signal handler, and the main thread will be the only one to
-  receive signals (this is enforced by the Python :mod:`signal` module, even
-  if the underlying thread implementation supports sending signals to
-  individual threads).  This means that signals can't be used as a means of
-  inter-thread communication.  Use locks instead.
+Execution of Python signal handlers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A Python signal handler does not get executed inside the low-level (C) signal
+handler.  Instead, the low-level signal handler sets a flag which tells the
+:term:`virtual machine` to execute the corresponding Python signal handler
+at a later point(for example at the next :term:`bytecode` instruction).
+This has consequences:
+
+* It makes little sense to catch synchronous errors like :const:`SIGFPE` or
+  :const:`SIGSEGV`.
+
+* A long-running calculation implemented purely in C (such as regular
+  expression matching on a large body of text) may run uninterrupted for an
+  arbitrary amount of time, regardless of any signals received.  The Python
+  signal handlers will be called when the calculation finishes.
+
+
+Signals and threads
+^^^^^^^^^^^^^^^^^^^
+
+Python signal handlers are always executed in the main Python thread,
+even if the signal was received in another thread.  This means that signals
+can't be used as a means of inter-thread communication.  You can use
+the synchronization primitives from the :mod:`threading` module instead.
+
+Besides, only the main thread is allowed to set a new signal handler.
+
+
+Module contents
+---------------
 
 The variables defined in the :mod:`signal` module are:
 
@@ -77,22 +88,22 @@ The variables defined in the :mod:`signal` module are:
 
 .. data:: CTRL_C_EVENT
 
-   The signal corresponding to the :kbd:`Ctrl+C` keystroke event. This signal can
+   The signal corresponding to the CTRL+C keystroke event. This signal can
    only be used with :func:`os.kill`.
 
    Availability: Windows.
 
-   .. versionadded:: 2.7
+   .. versionadded:: 3.2
 
 
 .. data:: CTRL_BREAK_EVENT
 
-   The signal corresponding to the :kbd:`Ctrl+Break` keystroke event. This signal can
+   The signal corresponding to the CTRL+BREAK keystroke event. This signal can
    only be used with :func:`os.kill`.
 
    Availability: Windows.
 
-   .. versionadded:: 2.7
+   .. versionadded:: 3.2
 
 
 .. data:: NSIG
@@ -102,7 +113,8 @@ The variables defined in the :mod:`signal` module are:
 
 .. data:: ITIMER_REAL
 
-   Decrements interval timer in real time, and delivers :const:`SIGALRM` upon expiration.
+   Decrements interval timer in real time, and delivers :const:`SIGALRM` upon
+   expiration.
 
 
 .. data:: ITIMER_VIRTUAL
@@ -180,15 +192,11 @@ The :mod:`signal` module defines the following functions:
    Attempting to pass an invalid interval timer will cause an
    :exc:`ItimerError`.  Availability: Unix.
 
-   .. versionadded:: 2.6
-
 
 .. function:: getitimer(which)
 
    Returns current value of a given interval timer specified by *which*.
    Availability: Unix.
-
-   .. versionadded:: 2.6
 
 
 .. function:: set_wakeup_fd(fd)
@@ -197,16 +205,12 @@ The :mod:`signal` module defines the following functions:
    written to the fd.  This can be used by a library to wakeup a poll or select
    call, allowing the signal to be fully processed.
 
-   The old wakeup fd is returned (or -1 if file descriptor wakeup was not
-   enabled).  If *fd* is -1, file descriptor wakeup is disabled.
-   If not -1, *fd* must be non-blocking.  It is up to the library to remove
-   any bytes from *fd* before calling poll or select again.
+   The old wakeup fd is returned.  *fd* must be non-blocking.  It is up to the
+   library to remove any bytes before calling poll or select again.
 
    When threads are enabled, this function can only be called from the main thread;
    attempting to call it from other threads will cause a :exc:`ValueError`
    exception to be raised.
-
-   .. versionadded:: 2.6
 
 
 .. function:: siginterrupt(signalnum, flag)
@@ -219,8 +223,6 @@ The :mod:`signal` module defines the following functions:
    Note that installing a signal handler with :func:`signal` will reset the
    restart behaviour to interruptible by implicitly calling
    :c:func:`siginterrupt` with a true *flag* value for the given signal.
-
-   .. versionadded:: 2.6
 
 
 .. function:: signal(signalnum, handler)
@@ -260,7 +262,7 @@ be sent, and the handler raises an exception. ::
    import signal, os
 
    def handler(signum, frame):
-       print 'Signal handler called with signal', signum
+       print('Signal handler called with signal', signum)
        raise IOError("Couldn't open device!")
 
    # Set the signal handler and a 5-second alarm

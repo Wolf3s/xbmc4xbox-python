@@ -1,8 +1,9 @@
-:mod:`stat` --- Interpreting :func:`~os.stat` results
-=====================================================
+:mod:`stat` --- Interpreting :func:`stat` results
+=================================================
 
 .. module:: stat
-   :synopsis: Utilities for interpreting the results of os.stat(), os.lstat() and os.fstat().
+   :synopsis: Utilities for interpreting the results of os.stat(),
+              os.lstat() and os.fstat().
 .. sectionauthor:: Skip Montanaro <skip@automatrix.com>
 
 **Source code:** :source:`Lib/stat.py`
@@ -95,10 +96,10 @@ Example::
                callback(pathname)
            else:
                # Unknown file type, print a message
-               print 'Skipping %s' % pathname
+               print('Skipping %s' % pathname)
 
    def visitfile(file):
-       print 'visiting', file
+       print('visiting', file)
 
    if __name__ == '__main__':
        walktree(sys.argv[1], visitfile)
@@ -170,6 +171,10 @@ on the implementation of the underlying system call.
 The variables below define the flags used in the :data:`ST_MODE` field.
 
 Use of the functions above is more portable than use of the first set of flags:
+
+.. data:: S_IFMT
+
+   Bit mask for the file type bit fields.
 
 .. data:: S_IFSOCK
 

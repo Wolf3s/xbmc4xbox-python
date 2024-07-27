@@ -15,20 +15,11 @@
 
 /* size of a code word (must be unsigned short or larger, and
    large enough to hold a UCS4 character) */
-#ifdef Py_USING_UNICODE
-# define SRE_CODE Py_UCS4
-# if SIZEOF_SIZE_T > 4
-#  define SRE_MAXREPEAT (~(SRE_CODE)0)
-# else
-#  define SRE_MAXREPEAT ((SRE_CODE)PY_SSIZE_T_MAX)
-# endif
+#define SRE_CODE Py_UCS4
+#if SIZEOF_SIZE_T > 4
+# define SRE_MAXREPEAT (~(SRE_CODE)0)
 #else
-# define SRE_CODE unsigned int
-# if SIZEOF_SIZE_T > SIZEOF_INT
-#  define SRE_MAXREPEAT (~(SRE_CODE)0)
-# else
-#  define SRE_MAXREPEAT ((SRE_CODE)PY_SSIZE_T_MAX)
-# endif
+# define SRE_MAXREPEAT ((SRE_CODE)PY_SSIZE_T_MAX + 1u)
 #endif
 
 typedef struct {
@@ -40,6 +31,8 @@ typedef struct {
     PyObject* pattern; /* pattern source (or None) */
     int flags; /* flags used when compiling pattern source */
     PyObject *weakreflist; /* List of weak references */
+	int charsize; /* pattern charsize (or -1) */
+    Py_buffer view;
     /* pattern code */
     Py_ssize_t codesize;
     SRE_CODE code[1];
@@ -89,6 +82,7 @@ typedef struct {
     char* data_stack;
     size_t data_stack_size;
     size_t data_stack_base;
+    Py_buffer buffer;
     /* current repeat context */
     SRE_REPEAT *repeat;
     /* hooks */

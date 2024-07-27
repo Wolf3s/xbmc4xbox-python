@@ -3,11 +3,8 @@
 
 .. module:: platform
    :synopsis: Retrieves as much platform identifying data as possible.
-.. moduleauthor:: Marc-Andre Lemburg <mal@egenix.com>
+.. moduleauthor:: Marc-André Lemburg <mal@egenix.com>
 .. sectionauthor:: Bjorn Pettersen <bpettersen@corp.fairisaac.com>
-
-
-.. versionadded:: 2.3
 
 **Source code:** :source:`Lib/platform.py`
 
@@ -33,8 +30,8 @@ Cross Platform
    returned as strings.
 
    Values that cannot be determined are returned as given by the parameter presets.
-   If bits is given as ``''``, the ``sizeof(pointer)`` (or
-   ``sizeof(long)`` on Python version < 1.5.2) is used as indicator for the
+   If bits is given as ``''``, the :c:func:`sizeof(pointer)` (or
+   :c:func:`sizeof(long)` on Python version < 1.5.2) is used as indicator for the
    supported pointer size.
 
    The function relies on the system's :file:`file` command to do the actual work.
@@ -106,27 +103,21 @@ Cross Platform
 
    Returns a string identifying the Python implementation SCM branch.
 
-   .. versionadded:: 2.6
-
 
 .. function:: python_implementation()
 
    Returns a string identifying the Python implementation. Possible return values
    are: 'CPython', 'IronPython', 'Jython', 'PyPy'.
 
-   .. versionadded:: 2.6
-
 
 .. function:: python_revision()
 
    Returns a string identifying the Python implementation SCM revision.
 
-   .. versionadded:: 2.6
-
 
 .. function:: python_version()
 
-   Returns the Python version as string ``'major.minor.patchlevel'``.
+   Returns the Python version as string ``'major.minor.patchlevel'``
 
    Note that unlike the Python ``sys.version``, the returned value will always
    include the patchlevel (it defaults to 0).
@@ -197,8 +188,8 @@ Windows Platform
 .. function:: win32_ver(release='', version='', csd='', ptype='')
 
    Get additional version information from the Windows Registry and return a tuple
-   ``(release, version, csd, ptype)`` referring to OS release, version number,
-   CSD level (service pack) and OS type (multi/single processor).
+   ``(version, csd, ptype)`` referring to version number, CSD level
+   (service pack) and OS type (multi/single processor).
 
    As a hint: *ptype* is ``'Uniprocessor Free'`` on single processor NT machines
    and ``'Multiprocessor Free'`` on multi processor machines. The *'Free'* refers
@@ -217,7 +208,7 @@ Windows Platform
 Win95/98 specific
 ^^^^^^^^^^^^^^^^^
 
-.. function:: popen(cmd, mode='r', bufsize=None)
+.. function:: popen(cmd, mode='r', bufsize=-1)
 
    Portable :func:`popen` interface.  Find a working popen implementation
    preferring :func:`win32pipe.popen`.  On Windows NT, :func:`win32pipe.popen`
@@ -244,15 +235,7 @@ Unix Platforms
 
 .. function:: dist(distname='', version='', id='', supported_dists=('SuSE','debian','redhat','mandrake',...))
 
-   This is an old version of the functionality now provided by
-   :func:`linux_distribution`. For new code, please use the
-   :func:`linux_distribution`.
-
-   The only difference between the two is that ``dist()`` always
-   returns the short name of the distribution taken from the
-   ``supported_dists`` parameter.
-
-   .. deprecated:: 2.6
+   This is another name for :func:`linux_distribution`.
 
 .. function:: linux_distribution(distname='', version='', id='', supported_dists=('SuSE','debian','redhat','mandrake',...), full_distribution_name=1)
 
@@ -269,12 +252,6 @@ Unix Platforms
    Returns a tuple ``(distname,version,id)`` which defaults to the args given as
    parameters.  ``id`` is the item in parentheses after the version number.  It
    is usually the version codename.
-
-   .. note::
-      This function is deprecated since Python 3.5 and removed in Python 3.8.
-      See alternative like the `distro <https://pypi.org/project/distro>`_ package.
-
-   .. versionadded:: 2.6
 
 .. function:: libc_ver(executable=sys.executable, lib='', version='', chunksize=2048)
 
