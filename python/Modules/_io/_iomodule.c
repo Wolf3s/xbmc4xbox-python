@@ -74,7 +74,7 @@ PyDoc_STRVAR(module_doc,
 "Another IOBase subclass, TextIOBase, deals with the encoding and decoding\n"
 "of streams into text. TextIOWrapper, which extends it, is a buffered text\n"
 "interface to a buffered raw stream (`BufferedIOBase`). Finally, StringIO\n"
-"is an in-memory stream for text.\n"
+"is a in-memory stream for text.\n"
 "\n"
 "Argument names are not part of the specification, and only the arguments\n"
 "of open() are intended to be used as keyword arguments.\n"
@@ -176,6 +176,9 @@ PyObject *PyExc_BlockingIOError = (PyObject *)&_PyExc_BlockingIOError;
  * The main open() function
  */
 PyDoc_STRVAR(open_doc,
+"open(file, mode='r', buffering=-1, encoding=None,\n"
+"     errors=None, newline=None, closefd=True) -> file object\n"
+"\n"
 "Open file and return a stream.  Raise IOError upon failure.\n"
 "\n"
 "file is either a text or byte string giving the name (and the path\n"
@@ -261,9 +264,9 @@ PyDoc_STRVAR(open_doc,
 "\n"
 "* On output, if newline is None, any '\\n' characters written are\n"
 "  translated to the system default line separator, os.linesep. If\n"
-"  newline is '', no translation takes place. If newline is any of the\n"
-"  other legal values, any '\\n' characters written are translated to\n"
-"  the given string.\n"
+"  newline is '' or '\\n', no translation takes place. If newline is any\n"
+"  of the other legal values, any '\\n' characters written are translated\n"
+"  to the given string.\n"
 "\n"
 "If closefd is False, the underlying file descriptor will be kept open\n"
 "when the file is closed. This does not work when a file name is given\n"
@@ -303,7 +306,7 @@ io_open(PyObject *self, PyObject *args, PyObject *kwds)
     int line_buffering;
     long isatty;
 
-    PyObject *raw, *modeobj = NULL, *buffer, *wrapper, *result = NULL;
+    PyObject *raw, *modeobj = NULL, *buffer = NULL, *wrapper = NULL;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|sizzzi:open", kwlist,
                                      &file, &mode, &buffering,
@@ -315,12 +318,7 @@ io_open(PyObject *self, PyObject *args, PyObject *kwds)
     if (!PyUnicode_Check(file) &&
 	!PyBytes_Check(file) &&
 	!PyNumber_Check(file)) {
-        PyObject *repr = PyObject_Repr(file);
-        if (repr != NULL) {
-            PyErr_Format(PyExc_TypeError, "invalid file: %s",
-                         PyString_AS_STRING(repr));
-            Py_DECREF(repr);
-        }
+        PyErr_Format(PyExc_TypeError, "invalid file: %R", file);
         return NULL;
     }
 
@@ -416,7 +414,6 @@ io_open(PyObject *self, PyObject *args, PyObject *kwds)
 				"Osi", file, rawmode, closefd);
     if (raw == NULL)
         return NULL;
-    result = raw;
 
     modeobj = PyUnicode_FromString(mode);
     if (modeobj == NULL)
@@ -450,7 +447,7 @@ io_open(PyObject *self, PyObject *args, PyObject *kwds)
             if (res == NULL)
                 goto error;
 
-            fileno = _PyInt_AsInt(res);
+            fileno = _PyLong_AsInt(res);
             Py_DECREF(res);
             if (fileno == -1 && PyErr_Occurred())
                 goto error;
@@ -475,7 +472,7 @@ io_open(PyObject *self, PyObject *args, PyObject *kwds)
         }
 
         Py_DECREF(modeobj);
-        return result;
+        return raw;
     }
 
     /* wraps into a buffered file */
@@ -496,16 +493,15 @@ io_open(PyObject *self, PyObject *args, PyObject *kwds)
 
         buffer = PyObject_CallFunction(Buffered_class, "Oi", raw, buffering);
     }
+    Py_CLEAR(raw);
     if (buffer == NULL)
         goto error;
-    result = buffer;
-    Py_DECREF(raw);
 
 
     /* if binary, returns the buffered file */
     if (binary) {
         Py_DECREF(modeobj);
-        return result;
+        return buffer;
     }
 
     /* wraps into a TextIOWrapper */
@@ -514,26 +510,20 @@ io_open(PyObject *self, PyObject *args, PyObject *kwds)
 				    buffer,
 				    encoding, errors, newline,
 				    line_buffering);
+    Py_CLEAR(buffer);
     if (wrapper == NULL)
         goto error;
-    result = wrapper;
-    Py_DECREF(buffer);
 
     if (PyObject_SetAttrString(wrapper, "mode", modeobj) < 0)
         goto error;
     Py_DECREF(modeobj);
-    return result;
+    return wrapper;
 
   error:
-    if (result != NULL) {
-        PyObject *exc, *val, *tb, *close_result;
-        PyErr_Fetch(&exc, &val, &tb);
-        close_result = PyObject_CallMethod(result, "close", NULL);
-        _PyErr_ReplaceException(exc, val, tb);
-        Py_XDECREF(close_result);
-        Py_DECREF(result);
-    }
+    Py_XDECREF(raw);
     Py_XDECREF(modeobj);
+    Py_XDECREF(buffer);
+    Py_XDECREF(wrapper);
     return NULL;
 }
 
@@ -549,12 +539,6 @@ PyNumber_AsOff_t(PyObject *item, PyObject *err)
     PyObject *value = PyNumber_Index(item);
     if (value == NULL)
         return -1;
-
-    if (PyInt_Check(value)) {
-        /* We assume a long always fits in a Py_off_t... */
-        result = (Py_off_t) PyInt_AS_LONG(value);
-        goto finish;
-    }
 
     /* We're done if PyLong_AsSsize_t() returns without error. */
     result = PyLong_AsOff_t(value);
@@ -615,30 +599,72 @@ _PyIO_ConvertSsize_t(PyObject *obj, void *result) {
 }
 
 
+static int
+iomodule_traverse(PyObject *mod, visitproc visit, void *arg) {
+    _PyIO_State *state = IO_MOD_STATE(mod);
+    if (!state->initialized)
+        return 0;
+    Py_VISIT(state->os_module);
+    if (state->locale_module != NULL) {
+        Py_VISIT(state->locale_module);
+    }
+    Py_VISIT(state->unsupported_operation);
+    return 0;
+}
+
+
+static int
+iomodule_clear(PyObject *mod) {
+    _PyIO_State *state = IO_MOD_STATE(mod);
+    if (!state->initialized)
+        return 0;
+    Py_CLEAR(state->os_module);
+    if (state->locale_module != NULL)
+        Py_CLEAR(state->locale_module);
+    Py_CLEAR(state->unsupported_operation);
+    return 0;
+}
+
+static void
+iomodule_free(PyObject *mod) {
+    iomodule_clear(mod);
+}
+
+
 /*
  * Module definition
  */
-
-PyObject *_PyIO_os_module = NULL;
-PyObject *_PyIO_locale_module = NULL;
-PyObject *_PyIO_unsupported_operation = NULL;
 
 static PyMethodDef module_methods[] = {
     {"open", (PyCFunction)io_open, METH_VARARGS|METH_KEYWORDS, open_doc},
     {NULL, NULL}
 };
 
+struct PyModuleDef _PyIO_Module = {
+    PyModuleDef_HEAD_INIT,
+    "io",
+    module_doc,
+    sizeof(_PyIO_State),
+    module_methods,
+    NULL,
+    iomodule_traverse,
+    iomodule_clear,
+    (freefunc)iomodule_free,
+};
+
 PyMODINIT_FUNC
-init_io(void)
+PyInit__io(void)
 {
-    PyObject *m = Py_InitModule4("_io", module_methods,
-                                 module_doc, NULL, PYTHON_API_VERSION);
+    PyObject *m = PyModule_Create(&_PyIO_Module);
+    _PyIO_State *state = NULL;
     if (m == NULL)
-        return;
+        return NULL;
+    state = IO_MOD_STATE(m);
+    state->initialized = 0;
 
     /* put os in the module state */
-    _PyIO_os_module = PyImport_ImportModule("os");
-    if (_PyIO_os_module == NULL)
+    state->os_module = PyImport_ImportModule("os");
+    if (state->os_module == NULL)
         goto fail;
 
 #define ADD_TYPE(type, name) \
@@ -655,14 +681,14 @@ init_io(void)
         goto fail;
 
     /* UnsupportedOperation inherits from ValueError and IOError */
-    _PyIO_unsupported_operation = PyObject_CallFunction(
+    state->unsupported_operation = PyObject_CallFunction(
         (PyObject *)&PyType_Type, "s(OO){}",
         "UnsupportedOperation", PyExc_ValueError, PyExc_IOError);
-    if (_PyIO_unsupported_operation == NULL)
+    if (state->unsupported_operation == NULL)
         goto fail;
-    Py_INCREF(_PyIO_unsupported_operation);
+    Py_INCREF(state->unsupported_operation);
     if (PyModule_AddObject(m, "UnsupportedOperation",
-                           _PyIO_unsupported_operation) < 0)
+                           state->unsupported_operation) < 0)
         goto fail;
 
     /* BlockingIOError */
@@ -685,6 +711,8 @@ init_io(void)
     /* BytesIO */
     PyBytesIO_Type.tp_base = &PyBufferedIOBase_Type;
     ADD_TYPE(&PyBytesIO_Type, "BytesIO");
+    if (PyType_Ready(&_PyBytesIOBuffer_Type) < 0)
+        goto fail;
 
     /* StringIO */
     PyStringIO_Type.tp_base = &PyTextIOBase_Type;
@@ -714,64 +742,55 @@ init_io(void)
     ADD_TYPE(&PyIncrementalNewlineDecoder_Type, "IncrementalNewlineDecoder");
 
     /* Interned strings */
-    if (!(_PyIO_str_close = PyString_InternFromString("close")))
-        goto fail;
-    if (!(_PyIO_str_closed = PyString_InternFromString("closed")))
-        goto fail;
-    if (!(_PyIO_str_decode = PyString_InternFromString("decode")))
-        goto fail;
-    if (!(_PyIO_str_encode = PyString_InternFromString("encode")))
-        goto fail;
-    if (!(_PyIO_str_fileno = PyString_InternFromString("fileno")))
-        goto fail;
-    if (!(_PyIO_str_flush = PyString_InternFromString("flush")))
-        goto fail;
-    if (!(_PyIO_str_getstate = PyString_InternFromString("getstate")))
-        goto fail;
-    if (!(_PyIO_str_isatty = PyString_InternFromString("isatty")))
-        goto fail;
-    if (!(_PyIO_str_newlines = PyString_InternFromString("newlines")))
-        goto fail;
-    if (!(_PyIO_str_nl = PyString_InternFromString("\n")))
-        goto fail;
-    if (!(_PyIO_str_read = PyString_InternFromString("read")))
-        goto fail;
-    if (!(_PyIO_str_read1 = PyString_InternFromString("read1")))
-        goto fail;
-    if (!(_PyIO_str_readable = PyString_InternFromString("readable")))
-        goto fail;
-    if (!(_PyIO_str_readinto = PyString_InternFromString("readinto")))
-        goto fail;
-    if (!(_PyIO_str_readline = PyString_InternFromString("readline")))
-        goto fail;
-    if (!(_PyIO_str_reset = PyString_InternFromString("reset")))
-        goto fail;
-    if (!(_PyIO_str_seek = PyString_InternFromString("seek")))
-        goto fail;
-    if (!(_PyIO_str_seekable = PyString_InternFromString("seekable")))
-        goto fail;
-    if (!(_PyIO_str_setstate = PyString_InternFromString("setstate")))
-        goto fail;
-    if (!(_PyIO_str_tell = PyString_InternFromString("tell")))
-        goto fail;
-    if (!(_PyIO_str_truncate = PyString_InternFromString("truncate")))
-        goto fail;
-    if (!(_PyIO_str_write = PyString_InternFromString("write")))
-        goto fail;
-    if (!(_PyIO_str_writable = PyString_InternFromString("writable")))
-        goto fail;
-    
-    if (!(_PyIO_empty_str = PyUnicode_FromStringAndSize(NULL, 0)))
-        goto fail;
-    if (!(_PyIO_empty_bytes = PyBytes_FromStringAndSize(NULL, 0)))
-        goto fail;
-    if (!(_PyIO_zero = PyLong_FromLong(0L)))
+#define ADD_INTERNED(name) \
+    if (!_PyIO_str_ ## name && \
+        !(_PyIO_str_ ## name = PyUnicode_InternFromString(# name))) \
         goto fail;
 
-    return;
+    ADD_INTERNED(close)
+    ADD_INTERNED(closed)
+    ADD_INTERNED(decode)
+    ADD_INTERNED(encode)
+    ADD_INTERNED(fileno)
+    ADD_INTERNED(flush)
+    ADD_INTERNED(getstate)
+    ADD_INTERNED(isatty)
+    ADD_INTERNED(newlines)
+    ADD_INTERNED(read)
+    ADD_INTERNED(read1)
+    ADD_INTERNED(readable)
+    ADD_INTERNED(readinto)
+    ADD_INTERNED(readline)
+    ADD_INTERNED(reset)
+    ADD_INTERNED(seek)
+    ADD_INTERNED(seekable)
+    ADD_INTERNED(setstate)
+    ADD_INTERNED(tell)
+    ADD_INTERNED(truncate)
+    ADD_INTERNED(write)
+    ADD_INTERNED(writable)
+
+    if (!_PyIO_str_nl &&
+        !(_PyIO_str_nl = PyUnicode_InternFromString("\n")))
+        goto fail;
+
+    if (!_PyIO_empty_str &&
+        !(_PyIO_empty_str = PyUnicode_FromStringAndSize(NULL, 0)))
+        goto fail;
+    if (!_PyIO_empty_bytes &&
+        !(_PyIO_empty_bytes = PyBytes_FromStringAndSize(NULL, 0)))
+        goto fail;
+    if (!_PyIO_zero &&
+        !(_PyIO_zero = PyLong_FromLong(0L)))
+        goto fail;
+
+    state->initialized = 1;
+
+    return m;
 
   fail:
-    Py_CLEAR(_PyIO_os_module);
-    Py_CLEAR(_PyIO_unsupported_operation);
+    Py_XDECREF(state->os_module);
+    Py_XDECREF(state->unsupported_operation);
     Py_DECREF(m);
+    return NULL;
 }

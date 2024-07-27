@@ -23,17 +23,19 @@ Noddy_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 
     self = (Noddy *)type->tp_alloc(type, 0);
     if (self != NULL) {
-        self->first = PyString_FromString("");
-        if (self->first == NULL) {
+        self->first = PyUnicode_FromString("");
+        if (self->first == NULL)
+          {
             Py_DECREF(self);
             return NULL;
-        }
-
-        self->last = PyString_FromString("");
-        if (self->last == NULL) {
+          }
+        
+        self->last = PyUnicode_FromString("");
+        if (self->last == NULL)
+          {
             Py_DECREF(self);
             return NULL;
-        }
+          }
 
         self->number = 0;
     }
@@ -48,10 +50,10 @@ Noddy_init(Noddy *self, PyObject *args, PyObject *kwds)
 
     static char *kwlist[] = {"first", "last", "number", NULL};
 
-    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|SSi", kwlist,
-                                      &first, &last,
+    if (! PyArg_ParseTupleAndKeywords(args, kwds, "|SSi", kwlist, 
+                                      &first, &last, 
                                       &self->number))
-        return -1;
+        return -1; 
 
     if (first) {
         tmp = self->first;
@@ -86,22 +88,22 @@ Noddy_getfirst(Noddy *self, void *closure)
 static int
 Noddy_setfirst(Noddy *self, PyObject *value, void *closure)
 {
-    if (value == NULL) {
-        PyErr_SetString(PyExc_TypeError, "Cannot delete the first attribute");
-        return -1;
-    }
+  if (value == NULL) {
+    PyErr_SetString(PyExc_TypeError, "Cannot delete the first attribute");
+    return -1;
+  }
+  
+  if (! PyUnicode_Check(value)) {
+    PyErr_SetString(PyExc_TypeError, 
+                    "The first attribute value must be a string");
+    return -1;
+  }
+      
+  Py_DECREF(self->first);
+  Py_INCREF(value);
+  self->first = value;    
 
-    if (! PyString_Check(value)) {
-        PyErr_SetString(PyExc_TypeError,
-                        "The first attribute value must be a string");
-        return -1;
-    }
-
-    Py_DECREF(self->first);
-    Py_INCREF(value);
-    self->first = value;
-
-    return 0;
+  return 0;
 }
 
 static PyObject *
@@ -114,30 +116,30 @@ Noddy_getlast(Noddy *self, void *closure)
 static int
 Noddy_setlast(Noddy *self, PyObject *value, void *closure)
 {
-    if (value == NULL) {
-        PyErr_SetString(PyExc_TypeError, "Cannot delete the last attribute");
-        return -1;
-    }
+  if (value == NULL) {
+    PyErr_SetString(PyExc_TypeError, "Cannot delete the last attribute");
+    return -1;
+  }
+  
+  if (! PyUnicode_Check(value)) {
+    PyErr_SetString(PyExc_TypeError, 
+                    "The last attribute value must be a string");
+    return -1;
+  }
+      
+  Py_DECREF(self->last);
+  Py_INCREF(value);
+  self->last = value;    
 
-    if (! PyString_Check(value)) {
-        PyErr_SetString(PyExc_TypeError,
-                        "The last attribute value must be a string");
-        return -1;
-    }
-
-    Py_DECREF(self->last);
-    Py_INCREF(value);
-    self->last = value;
-
-    return 0;
+  return 0;
 }
 
 static PyGetSetDef Noddy_getseters[] = {
-    {"first",
+    {"first", 
      (getter)Noddy_getfirst, (setter)Noddy_setfirst,
      "first name",
      NULL},
-    {"last",
+    {"last", 
      (getter)Noddy_getlast, (setter)Noddy_setlast,
      "last name",
      NULL},
@@ -151,7 +153,7 @@ Noddy_name(Noddy* self)
     PyObject *args, *result;
 
     if (format == NULL) {
-        format = PyString_FromString("%s %s");
+        format = PyUnicode_FromString("%s %s");
         if (format == NULL)
             return NULL;
     }
@@ -160,9 +162,9 @@ Noddy_name(Noddy* self)
     if (args == NULL)
         return NULL;
 
-    result = PyString_Format(format, args);
+    result = PyUnicode_Format(format, args);
     Py_DECREF(args);
-
+    
     return result;
 }
 
@@ -182,12 +184,12 @@ static PyTypeObject NoddyType = {
     0,                         /* tp_print */
     0,                         /* tp_getattr */
     0,                         /* tp_setattr */
-    0,                         /* tp_compare */
+    0,                         /* tp_reserved */
     0,                         /* tp_repr */
     0,                         /* tp_as_number */
     0,                         /* tp_as_sequence */
     0,                         /* tp_as_mapping */
-    0,                         /* tp_hash */
+    0,                         /* tp_hash  */
     0,                         /* tp_call */
     0,                         /* tp_str */
     0,                         /* tp_getattro */
@@ -196,12 +198,12 @@ static PyTypeObject NoddyType = {
     Py_TPFLAGS_DEFAULT |
         Py_TPFLAGS_BASETYPE,   /* tp_flags */
     "Noddy objects",           /* tp_doc */
-    0,                         /* tp_traverse */
-    0,                         /* tp_clear */
-    0,                         /* tp_richcompare */
-    0,                         /* tp_weaklistoffset */
-    0,                         /* tp_iter */
-    0,                         /* tp_iternext */
+    0,		               /* tp_traverse */
+    0,		               /* tp_clear */
+    0,		               /* tp_richcompare */
+    0,		               /* tp_weaklistoffset */
+    0,		               /* tp_iter */
+    0,		               /* tp_iternext */
     Noddy_methods,             /* tp_methods */
     Noddy_members,             /* tp_members */
     Noddy_getseters,           /* tp_getset */
@@ -215,27 +217,27 @@ static PyTypeObject NoddyType = {
     Noddy_new,                 /* tp_new */
 };
 
-static PyMethodDef module_methods[] = {
-    {NULL}  /* Sentinel */
+static PyModuleDef noddy3module = {
+    PyModuleDef_HEAD_INIT,
+    "noddy3",
+    "Example module that creates an extension type.",
+    -1,
+    NULL, NULL, NULL, NULL, NULL
 };
 
-#ifndef PyMODINIT_FUNC	/* declarations for DLL import/export */
-#define PyMODINIT_FUNC void
-#endif
 PyMODINIT_FUNC
-initnoddy3(void)
+PyInit_noddy3(void) 
 {
     PyObject* m;
 
     if (PyType_Ready(&NoddyType) < 0)
-        return;
+        return NULL;
 
-    m = Py_InitModule3("noddy3", module_methods,
-                       "Example module that creates an extension type.");
-
+    m = PyModule_Create(&noddy3module);
     if (m == NULL)
-        return;
+        return NULL;
 
     Py_INCREF(&NoddyType);
     PyModule_AddObject(m, "Noddy", (PyObject *)&NoddyType);
+    return m;
 }

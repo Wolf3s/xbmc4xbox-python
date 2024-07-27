@@ -36,6 +36,7 @@ the definition of all other Python objects.
 These macros are used in the definition of :c:type:`PyObject` and
 :c:type:`PyVarObject`:
 
+.. XXX need to document PEP 3123 changes here
 
 .. c:macro:: PyObject_HEAD
 
@@ -69,37 +70,6 @@ These macros are used in the definition of :c:type:`PyObject` and
    expansion varies depending on the definition of :c:macro:`Py_TRACE_REFS`.
 
 
-.. c:macro:: Py_TYPE(o)
-
-   This macro is used to access the :attr:`ob_type` member of a Python object.
-   It expands to::
-
-      (((PyObject*)(o))->ob_type)
-
-   .. versionadded:: 2.6
-
-
-.. c:macro:: Py_REFCNT(o)
-
-   This macro is used to access the :attr:`ob_refcnt` member of a Python
-   object.
-   It expands to::
-
-      (((PyObject*)(o))->ob_refcnt)
-
-   .. versionadded:: 2.6
-
-
-.. c:macro:: Py_SIZE(o)
-
-   This macro is used to access the :attr:`ob_size` member of a Python object.
-   It expands to::
-
-      (((PyVarObject*)(o))->ob_size)
-
-   .. versionadded:: 2.6
-
-
 .. c:macro:: PyObject_HEAD_INIT(type)
 
    This is a macro which expands to initialization values for a new
@@ -129,6 +99,14 @@ These macros are used in the definition of :c:type:`PyObject` and
    reference.
 
 
+.. c:type:: PyCFunctionWithKeywords
+
+   Type of the functions used to implement Python callables in C that take
+   keyword arguments: they take three :c:type:`PyObject\*` parameters and return
+   one such value.  See :c:type:`PyCFunction` above for the meaning of the return
+   value.
+
+
 .. c:type:: PyMethodDef
 
    Structure used to describe a method of an extension type.  This structure has
@@ -153,14 +131,15 @@ The :attr:`ml_meth` is a C function pointer.  The functions may be of different
 types, but they always return :c:type:`PyObject\*`.  If the function is not of
 the :c:type:`PyCFunction`, the compiler will require a cast in the method table.
 Even though :c:type:`PyCFunction` defines the first parameter as
-:c:type:`PyObject\*`, it is common that the method implementation uses the
+:c:type:`PyObject\*`, it is common that the method implementation uses a the
 specific C type of the *self* object.
 
 The :attr:`ml_flags` field is a bitfield which can include the following flags.
 The individual flags indicate either a calling convention or a binding
 convention.  Of the calling convention flags, only :const:`METH_VARARGS` and
-:const:`METH_KEYWORDS` can be combined. Any of the calling convention flags
-can be combined with a binding flag.
+:const:`METH_KEYWORDS` can be combined (but note that :const:`METH_KEYWORDS`
+alone is equivalent to ``METH_VARARGS | METH_KEYWORDS``). Any of the calling
+convention flags can be combined with a binding flag.
 
 
 .. data:: METH_VARARGS
@@ -169,7 +148,7 @@ can be combined with a binding flag.
    :c:type:`PyCFunction`. The function expects two :c:type:`PyObject\*` values.
    The first one is the *self* object for methods; for module functions, it is
    the module object.  The second parameter (often called *args*) is a tuple
-   object representing all arguments.  This parameter is typically processed
+   object representing all arguments. This parameter is typically processed
    using :c:func:`PyArg_ParseTuple` or :c:func:`PyArg_UnpackTuple`.
 
 
@@ -186,9 +165,9 @@ can be combined with a binding flag.
 
    Methods without parameters don't need to check whether arguments are given if
    they are listed with the :const:`METH_NOARGS` flag.  They need to be of type
-   :c:type:`PyCFunction`.  The first parameter is typically named ``self`` and
-   will hold a reference to the module or object instance.  In all cases the
-   second parameter will be *NULL*.
+   :c:type:`PyCFunction`.  The first parameter is typically named *self* and will
+   hold a reference to the module or object instance.  In all cases the second
+   parameter will be *NULL*.
 
 
 .. data:: METH_O
@@ -198,15 +177,6 @@ can be combined with a binding flag.
    They have the type :c:type:`PyCFunction`, with the *self* parameter, and a
    :c:type:`PyObject\*` parameter representing the single argument.
 
-
-.. data:: METH_OLDARGS
-
-   This calling convention is deprecated.  The method must be of type
-   :c:type:`PyCFunction`.  The second argument is *NULL* if no arguments are
-   given, a single object if exactly one argument is given, and a tuple of
-   objects if more than one argument is given.  There is no way for a function
-   using this convention to distinguish between a call with multiple arguments
-   and a call with a tuple as the only argument.
 
 These two constants are not used to indicate the calling convention but the
 binding when use with methods of classes.  These may not be used for functions
@@ -223,8 +193,6 @@ method.
    similar to what is created when using the :func:`classmethod` built-in
    function.
 
-   .. versionadded:: 2.3
-
 
 .. data:: METH_STATIC
 
@@ -233,8 +201,6 @@ method.
    The method will be passed *NULL* as the first parameter rather than an
    instance of the type.  This is used to create *static methods*, similar to
    what is created when using the :func:`staticmethod` built-in function.
-
-   .. versionadded:: 2.3
 
 One other constant controls whether a method is loaded in place of another
 definition with the same method name.
@@ -252,8 +218,6 @@ definition with the same method name.
    slot.  This is helpful because calls to PyCFunctions are optimized more
    than wrapper object calls.
 
-   .. versionadded:: 2.4
-
 
 .. c:type:: PyMemberDef
 
@@ -265,7 +229,7 @@ definition with the same method name.
    +==================+=============+===============================+
    | :attr:`name`     | char \*     | name of the member            |
    +------------------+-------------+-------------------------------+
-   | :attr:`!type`    | int         | the type of the member in the |
+   | :attr:`type`     | int         | the type of the member in the |
    |                  |             | C struct                      |
    +------------------+-------------+-------------------------------+
    | :attr:`offset`   | Py_ssize_t  | the offset in bytes that the  |
@@ -280,7 +244,7 @@ definition with the same method name.
    |                  |             | docstring                     |
    +------------------+-------------+-------------------------------+
 
-   :attr:`!type` can be one of many ``T_`` macros corresponding to various C
+   :attr:`type` can be one of many ``T_`` macros corresponding to various C
    types.  When the member is accessed in Python, it will be converted to the
    equivalent Python type.
 
@@ -314,55 +278,7 @@ definition with the same method name.
    handles use of the :keyword:`del` statement on that attribute more correctly
    than :c:macro:`T_OBJECT`.
 
-   :attr:`flags` can be ``0`` for write and read access or :c:macro:`READONLY` for
+   :attr:`flags` can be 0 for write and read access or :c:macro:`READONLY` for
    read-only access.  Using :c:macro:`T_STRING` for :attr:`type` implies
    :c:macro:`READONLY`.  Only :c:macro:`T_OBJECT` and :c:macro:`T_OBJECT_EX`
    members can be deleted.  (They are set to *NULL*).
-
-
-.. c:type:: PyGetSetDef
-
-   Structure to define property-like access for a type. See also description of
-   the :c:member:`PyTypeObject.tp_getset` slot.
-
-   +-------------+------------------+-----------------------------------+
-   | Field       | C Type           | Meaning                           |
-   +=============+==================+===================================+
-   | name        | char \*          | attribute name                    |
-   +-------------+------------------+-----------------------------------+
-   | get         | getter           | C Function to get the attribute   |
-   +-------------+------------------+-----------------------------------+
-   | set         | setter           | optional C function to set or     |
-   |             |                  | delete the attribute, if omitted  |
-   |             |                  | the attribute is readonly         |
-   +-------------+------------------+-----------------------------------+
-   | doc         | char \*          | optional docstring                |
-   +-------------+------------------+-----------------------------------+
-   | closure     | void \*          | optional function pointer,        |
-   |             |                  | providing additional data for     |
-   |             |                  | getter and setter                 |
-   +-------------+------------------+-----------------------------------+
-
-   The ``get`` function takes one :c:type:`PyObject\*` parameter (the
-   instance) and a function pointer (the associated ``closure``)::
-
-      typedef PyObject *(*getter)(PyObject *, void *);
-
-   It should return a new reference on success or *NULL* with a set exception
-   on failure.
-
-   ``set`` functions take two :c:type:`PyObject\*` parameters (the instance and
-   the value to be set) and a function pointer (the associated ``closure``)::
-
-      typedef int (*setter)(PyObject *, PyObject *, void *);
-
-   In case the attribute should be deleted the second parameter is *NULL*.
-   Should return ``0`` on success or ``-1`` with a set exception on failure.
-
-
-.. c:function:: PyObject* Py_FindMethod(PyMethodDef table[], PyObject *ob, char *name)
-
-   Return a bound method object for an extension type implemented in C.  This
-   can be useful in the implementation of a :c:member:`~PyTypeObject.tp_getattro` or
-   :c:member:`~PyTypeObject.tp_getattr` handler that does not use the
-   :c:func:`PyObject_GenericGetAttr` function.

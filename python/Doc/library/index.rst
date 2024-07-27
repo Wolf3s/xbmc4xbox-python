@@ -20,7 +20,7 @@ everyday programming. Some of these modules are explicitly designed to
 encourage and enhance the portability of Python programs by abstracting
 away platform-specifics into platform-neutral APIs.
 
-The Python installers for the Windows platform usually include
+The Python installers for the Windows platform usually includes
 the entire standard library and often also include many additional
 components. For Unix-like operating systems Python is normally provided
 as a collection of packages, so it may be necessary to use the packaging
@@ -30,7 +30,7 @@ optional components.
 In addition to the standard library, there is a growing collection of
 several thousand components (from individual programs and modules to
 packages and entire application development frameworks), available from
-the `Python Package Index <https://pypi.org>`_.
+the `Python Package Index <http://pypi.python.org/pypi>`_.
 
 
 .. toctree::
@@ -46,6 +46,7 @@ the `Python Package Index <https://pypi.org>`_.
    strings.rst
    datatypes.rst
    numeric.rst
+   functional.rst
    filesys.rst
    persistence.rst
    archiving.rst
@@ -63,18 +64,11 @@ the `Python Package Index <https://pypi.org>`_.
    tk.rst
    development.rst
    debug.rst
-   distribution.rst
    python.rst
    custominterp.rst
-   restricted.rst
    modules.rst
    language.rst
-   compiler.rst
    misc.rst
    windows.rst
    unix.rst
-   mac.rst
-   macosa.rst
-   sgi.rst
-   sun.rst
    undoc.rst

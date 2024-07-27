@@ -1,14 +1,12 @@
-
 :mod:`bz2` --- Compression compatible with :program:`bzip2`
 ===========================================================
 
 .. module:: bz2
-   :synopsis: Interface to compression and decompression routines compatible with bzip2.
+   :synopsis: Interface to compression and decompression routines
+              compatible with bzip2.
 .. moduleauthor:: Gustavo Niemeyer <niemeyer@conectiva.com>
 .. sectionauthor:: Gustavo Niemeyer <niemeyer@conectiva.com>
 
-
-.. versionadded:: 2.3
 
 This module provides a comprehensive interface for the bz2 compression library.
 It implements a complete file interface, one-shot (de)compression functions, and
@@ -24,8 +22,8 @@ Here is a summary of the features offered by the bz2 module:
 
 * :class:`BZ2File` class implements universal newline support;
 
-* :class:`BZ2File` class offers an optimized line iteration using the readahead
-  algorithm borrowed from file objects;
+* :class:`BZ2File` class offers an optimized line iteration using a readahead
+  algorithm;
 
 * Sequential (de)compression supported by :class:`BZ2Compressor` and
   :class:`BZ2Decompressor` classes;
@@ -34,10 +32,6 @@ Here is a summary of the features offered by the bz2 module:
   functions;
 
 * Thread safety uses individual locking mechanism.
-
-.. note::
-   Handling of multi-stream bzip2 files is not supported.  Modules such as
-   `bz2file <https://github.com/nvawda/bz2file>`_ let you overcome this.
 
 
 (De)compression of files
@@ -49,7 +43,7 @@ Handling of compressed files is offered by the :class:`BZ2File` class.
 .. index::
    single: universal newlines; bz2.BZ2File class
 
-.. class:: BZ2File(filename[, mode[, buffering[, compresslevel]]])
+.. class:: BZ2File(filename, mode='r', buffering=0, compresslevel=9)
 
    Open a bz2 file. Mode can be either ``'r'`` or ``'w'``, for reading (default)
    or writing. When opened for writing, the file will be created if it doesn't
@@ -57,7 +51,7 @@ Handling of compressed files is offered by the :class:`BZ2File` class.
    unbuffered, and larger numbers specify the buffer size; the default is
    ``0``. If *compresslevel* is given, it must be a number between ``1`` and
    ``9``; the default is ``9``. Add a ``'U'`` to mode to open the file for input
-   in :term:`universal newlines` mode. Any line ending in the input file will be
+   in :term:`universal newlines` mode.  Any line ending in the input file will be
    seen as a ``'\n'`` in Python.  Also, a file so opened gains the attribute
    :attr:`newlines`; the value for this attribute is one of ``None`` (no newline
    read yet), ``'\r'``, ``'\n'``, ``'\r\n'`` or a tuple containing all the
@@ -67,7 +61,7 @@ Handling of compressed files is offered by the :class:`BZ2File` class.
 
    :class:`BZ2File` supports the :keyword:`with` statement.
 
-   .. versionchanged:: 2.7
+   .. versionchanged:: 3.1
       Support for the :keyword:`with` statement was added.
 
 
@@ -78,7 +72,7 @@ Handling of compressed files is offered by the :class:`BZ2File` class.
       input file, only the first stream will be accessible. If you require
       support for multi-stream files, consider using the third-party
       :mod:`bz2file` module (available from
-      `PyPI <https://pypi.org/project/bz2file>`_). This module provides a
+      `PyPI <http://pypi.python.org/pypi/bz2file>`_). This module provides a
       backport of Python 3.3's :class:`BZ2File` class, which does support
       multi-stream files.
 
@@ -92,33 +86,22 @@ Handling of compressed files is offered by the :class:`BZ2File` class.
 
    .. method:: read([size])
 
-      Read at most *size* uncompressed bytes, returned as a string. If the
+      Read at most *size* uncompressed bytes, returned as a byte string. If the
       *size* argument is negative or omitted, read until EOF is reached.
 
 
    .. method:: readline([size])
 
-      Return the next line from the file, as a string, retaining newline. A
-      non-negative *size* argument limits the maximum number of bytes to return
-      (an incomplete line may be returned then). Return an empty string at EOF.
+      Return the next line from the file, as a byte string, retaining newline.
+      A non-negative *size* argument limits the maximum number of bytes to
+      return (an incomplete line may be returned then). Return an empty byte
+      string at EOF.
 
 
    .. method:: readlines([size])
 
       Return a list of lines read. The optional *size* argument, if given, is an
       approximate bound on the total number of bytes in the lines returned.
-
-
-   .. method:: xreadlines()
-
-      For backward compatibility. :class:`BZ2File` objects now include the
-      performance optimizations previously implemented in the :mod:`xreadlines`
-      module.
-
-      .. deprecated:: 2.3
-         This exists only for compatibility with the method by this name on
-         :class:`file` objects, which is deprecated.  Use ``for line in file``
-         instead.
 
 
    .. method:: seek(offset[, whence])
@@ -137,20 +120,21 @@ Handling of compressed files is offered by the :class:`BZ2File` class.
 
    .. method:: tell()
 
-      Return the current file position, an integer (may be a long integer).
+      Return the current file position, an integer.
 
 
    .. method:: write(data)
 
-      Write string *data* to file. Note that due to buffering, :meth:`close` may
-      be needed before the file on disk reflects the data written.
+      Write the byte string *data* to file. Note that due to buffering,
+      :meth:`close` may be needed before the file on disk reflects the data
+      written.
 
 
-   .. method:: writelines(sequence_of_strings)
+   .. method:: writelines(sequence_of_byte_strings)
 
-      Write the sequence of strings to the file. Note that newlines are not
-      added. The sequence can be any iterable object producing strings. This is
-      equivalent to calling write() for each string.
+      Write the sequence of byte strings to the file. Note that newlines are not
+      added. The sequence can be any iterable object producing byte strings.
+      This is equivalent to calling write() for each byte string.
 
 
 Sequential (de)compression
@@ -160,13 +144,12 @@ Sequential compression and decompression is done using the classes
 :class:`BZ2Compressor` and :class:`BZ2Decompressor`.
 
 
-.. class:: BZ2Compressor([compresslevel])
+.. class:: BZ2Compressor(compresslevel=9)
 
    Create a new compressor object. This object may be used to compress data
    sequentially. If you want to compress data in one shot, use the
    :func:`compress` function instead. The *compresslevel* parameter, if given,
    must be a number between ``1`` and ``9``; the default is ``9``.
-
 
    .. method:: compress(data)
 
@@ -188,7 +171,6 @@ Sequential compression and decompression is done using the classes
    sequentially. If you want to decompress data in one shot, use the
    :func:`decompress` function instead.
 
-
    .. method:: decompress(data)
 
       Provide more data to the decompressor object. It will return chunks of
@@ -205,7 +187,7 @@ One-shot compression and decompression is provided through the :func:`compress`
 and :func:`decompress` functions.
 
 
-.. function:: compress(data[, compresslevel])
+.. function:: compress(data, compresslevel=9)
 
    Compress *data* in one shot. If you want to compress data sequentially, use
    an instance of :class:`BZ2Compressor` instead. The *compresslevel* parameter,

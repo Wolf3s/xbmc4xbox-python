@@ -1,4 +1,3 @@
-
 :mod:`xml.sax.handler` --- Base classes for SAX handlers
 ========================================================
 
@@ -7,8 +6,6 @@
 .. moduleauthor:: Lars Marius Garshol <larsga@garshol.priv.no>
 .. sectionauthor:: Martin v. Löwis <martin@v.loewis.de>
 
-
-.. versionadded:: 2.0
 
 The SAX API defines four kinds of handlers: content handlers, DTD handlers,
 error handlers, and entity resolvers. Applications normally only need to
@@ -240,8 +237,7 @@ events in the input document:
    Signals the start of an element in non-namespace mode.
 
    The *name* parameter contains the raw XML 1.0 name of the element type as a
-   string and the *attrs* parameter holds an object of the
-   :class:`~xml.sax.xmlreader.Attributes`
+   string and the *attrs* parameter holds an object of the :class:`Attributes`
    interface (see :ref:`attributes-objects`) containing the attributes of
    the element.  The object passed as *attrs* may be re-used by the parser; holding
    on to a reference to it is not a reliable way to keep a copy of the attributes.
@@ -264,8 +260,7 @@ events in the input document:
    The *name* parameter contains the name of the element type as a ``(uri,
    localname)`` tuple, the *qname* parameter contains the raw XML 1.0 name used in
    the source document, and the *attrs* parameter holds an instance of the
-   :class:`~xml.sax.xmlreader.AttributesNS` interface (see
-   :ref:`attributes-ns-objects`)
+   :class:`AttributesNS` interface (see :ref:`attributes-ns-objects`)
    containing the attributes of the element.  If no namespace is associated with
    the element, the *uri* component of *name* will be ``None``.  The object passed
    as *attrs* may be re-used by the parser; holding on to a reference to it is not
@@ -294,8 +289,8 @@ events in the input document:
    must come from the same external entity so that the Locator provides useful
    information.
 
-   *content* may be a Unicode string or a byte string; the ``expat`` reader module
-   produces always Unicode strings.
+   *content* may be a string or bytes instance; the ``expat`` reader module
+   always produces strings.
 
    .. note::
 
@@ -381,9 +376,8 @@ ErrorHandler Objects
 --------------------
 
 Objects with this interface are used to receive error and warning information
-from the :class:`~xml.sax.xmlreader.XMLReader`.  If you create an object that
-implements this interface, then register the object with your
-:class:`~xml.sax.xmlreader.XMLReader`, the parser
+from the :class:`XMLReader`.  If you create an object that implements this
+interface, then register the object with your :class:`XMLReader`, the parser
 will call the methods in your object to report all warnings and errors. There
 are three levels of errors available: warnings, (possibly) recoverable errors,
 and unrecoverable errors.  All methods take a :exc:`SAXParseException` as the

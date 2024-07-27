@@ -9,84 +9,6 @@
    All rights reserved.
 */
 
-/* reduce() *************************************************************/
-
-static PyObject *
-functools_reduce(PyObject *self, PyObject *args)
-{
-    PyObject *seq, *func, *result = NULL, *it;
-
-    if (!PyArg_UnpackTuple(args, "reduce", 2, 3, &func, &seq, &result))
-        return NULL;
-    if (result != NULL)
-        Py_INCREF(result);
-
-    it = PyObject_GetIter(seq);
-    if (it == NULL) {
-        PyErr_SetString(PyExc_TypeError,
-            "reduce() arg 2 must support iteration");
-        Py_XDECREF(result);
-        return NULL;
-    }
-
-    if ((args = PyTuple_New(2)) == NULL)
-        goto Fail;
-
-    for (;;) {
-        PyObject *op2;
-
-        if (args->ob_refcnt > 1) {
-            Py_DECREF(args);
-            if ((args = PyTuple_New(2)) == NULL)
-                goto Fail;
-        }
-
-        op2 = PyIter_Next(it);
-        if (op2 == NULL) {
-            if (PyErr_Occurred())
-                goto Fail;
-            break;
-        }
-
-        if (result == NULL)
-            result = op2;
-        else {
-            PyTuple_SetItem(args, 0, result);
-            PyTuple_SetItem(args, 1, op2);
-            if ((result = PyEval_CallObject(func, args)) == NULL)
-                goto Fail;
-        }
-    }
-
-    Py_DECREF(args);
-
-    if (result == NULL)
-        PyErr_SetString(PyExc_TypeError,
-                   "reduce() of empty sequence with no initial value");
-
-    Py_DECREF(it);
-    return result;
-
-Fail:
-    Py_XDECREF(args);
-    Py_XDECREF(result);
-    Py_DECREF(it);
-    return NULL;
-}
-
-PyDoc_STRVAR(reduce_doc,
-"reduce(function, sequence[, initial]) -> value\n\
-\n\
-Apply a function of two arguments cumulatively to the items of a sequence,\n\
-from left to right, so as to reduce the sequence to a single value.\n\
-For example, reduce(lambda x, y: x+y, [1, 2, 3, 4, 5]) calculates\n\
-((((1+2)+3)+4)+5).  If initial is present, it is placed before the items\n\
-of the sequence in the calculation, and serves as a default when the\n\
-sequence is empty.");
-
-
-
-
 /* partial object **********************************************************/
 
 typedef struct {
@@ -128,14 +50,23 @@ partial_new(PyTypeObject *type, PyObject *args, PyObject *kw)
     Py_INCREF(func);
     pto->args = PyTuple_GetSlice(args, 1, PY_SSIZE_T_MAX);
     if (pto->args == NULL) {
+        pto->kw = NULL;
         Py_DECREF(pto);
         return NULL;
     }
-    pto->kw = (kw != NULL) ? PyDict_Copy(kw) : PyDict_New();
-    if (pto->kw == NULL) {
-        Py_DECREF(pto);
-        return NULL;
+    if (kw != NULL) {
+        pto->kw = PyDict_Copy(kw);
+        if (pto->kw == NULL) {
+            Py_DECREF(pto);
+            return NULL;
+        }
+    } else {
+        pto->kw = Py_None;
+        Py_INCREF(Py_None);
     }
+
+    pto->weakreflist = NULL;
+    pto->dict = NULL;
 
     return (PyObject *)pto;
 }
@@ -143,7 +74,6 @@ partial_new(PyTypeObject *type, PyObject *args, PyObject *kw)
 static void
 partial_dealloc(partialobject *pto)
 {
-    /* bpo-31095: UnTrack is needed before calling any callbacks */
     PyObject_GC_UnTrack(pto);
     if (pto->weakreflist != NULL)
         PyObject_ClearWeakRefs((PyObject *) pto);
@@ -158,11 +88,11 @@ static PyObject *
 partial_call(partialobject *pto, PyObject *args, PyObject *kw)
 {
     PyObject *ret;
-    PyObject *argappl, *kwappl;
+    PyObject *argappl = NULL, *kwappl = NULL;
 
     assert (PyCallable_Check(pto->fn));
     assert (PyTuple_Check(pto->args));
-    assert (PyDict_Check(pto->kw));
+    assert (pto->kw == Py_None  ||  PyDict_Check(pto->kw));
 
     if (PyTuple_GET_SIZE(pto->args) == 0) {
         argappl = args;
@@ -174,12 +104,11 @@ partial_call(partialobject *pto, PyObject *args, PyObject *kw)
         argappl = PySequence_Concat(pto->args, args);
         if (argappl == NULL)
             return NULL;
-        assert(PyTuple_Check(argappl));
     }
 
-    if (PyDict_Size(pto->kw) == 0) {
+    if (pto->kw == Py_None) {
         kwappl = kw;
-        Py_XINCREF(kwappl);
+        Py_XINCREF(kw);
     } else {
         kwappl = PyDict_Copy(pto->kw);
         if (kwappl == NULL) {
@@ -267,6 +196,48 @@ static PyGetSetDef partial_getsetlist[] = {
     {NULL} /* Sentinel */
 };
 
+static PyObject *
+partial_repr(partialobject *pto)
+{
+    PyObject *result;
+    PyObject *arglist;
+    PyObject *tmp;
+    Py_ssize_t i, n;
+
+    arglist = PyUnicode_FromString("");
+    if (arglist == NULL) {
+        return NULL;
+    }
+    /* Pack positional arguments */
+    assert (PyTuple_Check(pto->args));
+    n = PyTuple_GET_SIZE(pto->args);
+    for (i = 0; i < n; i++) {
+        tmp = PyUnicode_FromFormat("%U, %R", arglist,
+                                   PyTuple_GET_ITEM(pto->args, i));
+        Py_DECREF(arglist);
+        if (tmp == NULL)
+            return NULL;
+        arglist = tmp;
+    }
+    /* Pack keyword arguments */
+    assert (pto->kw == Py_None  ||  PyDict_Check(pto->kw));
+    if (pto->kw != Py_None) {
+        PyObject *key, *value;
+        for (i = 0; PyDict_Next(pto->kw, &i, &key, &value);) {
+            tmp = PyUnicode_FromFormat("%U, %U=%R", arglist,
+                                       key, value);
+            Py_DECREF(arglist);
+            if (tmp == NULL)
+                return NULL;
+            arglist = tmp;
+        }
+    }
+    result = PyUnicode_FromFormat("%s(%R%U)", Py_TYPE(pto)->tp_name,
+                                  pto->fn, arglist);
+    Py_DECREF(arglist);
+    return result;
+}
+
 /* Pickle strategy:
    __reduce__ by itself doesn't support getting kwargs in the unpickle
    operation so we define a __setstate__ that replaces all the information
@@ -274,7 +245,7 @@ static PyGetSetDef partial_getsetlist[] = {
    it as a hook to do strange things.
  */
 
-PyObject *
+static PyObject *
 partial_reduce(partialobject *pto, PyObject *unused)
 {
     return Py_BuildValue("O(O)(OOOO)", Py_TYPE(pto), pto->fn, pto->fn,
@@ -282,49 +253,29 @@ partial_reduce(partialobject *pto, PyObject *unused)
                          pto->dict ? pto->dict : Py_None);
 }
 
-PyObject *
+static PyObject *
 partial_setstate(partialobject *pto, PyObject *state)
 {
     PyObject *fn, *fnargs, *kw, *dict;
-
-    if (!PyTuple_Check(state) ||
-        !PyArg_ParseTuple(state, "OOOO", &fn, &fnargs, &kw, &dict) ||
-        !PyCallable_Check(fn) ||
-        !PyTuple_Check(fnargs) ||
-        (kw != Py_None && !PyDict_Check(kw)))
-    {
-        PyErr_SetString(PyExc_TypeError, "invalid partial state");
+    if (!PyArg_ParseTuple(state, "OOOO",
+                          &fn, &fnargs, &kw, &dict))
         return NULL;
+    Py_XDECREF(pto->fn);
+    Py_XDECREF(pto->args);
+    Py_XDECREF(pto->kw);
+    Py_XDECREF(pto->dict);
+    pto->fn = fn;
+    pto->args = fnargs;
+    pto->kw = kw;
+    if (dict != Py_None) {
+      pto->dict = dict;
+      Py_INCREF(dict);
+    } else {
+      pto->dict = NULL;
     }
-
-    if(!PyTuple_CheckExact(fnargs))
-        fnargs = PySequence_Tuple(fnargs);
-    else
-        Py_INCREF(fnargs);
-    if (fnargs == NULL)
-        return NULL;
-
-    if (kw == Py_None)
-        kw = PyDict_New();
-    else if(!PyDict_CheckExact(kw))
-        kw = PyDict_Copy(kw);
-    else
-        Py_INCREF(kw);
-    if (kw == NULL) {
-        Py_DECREF(fnargs);
-        return NULL;
-    }
-
     Py_INCREF(fn);
-    if (dict == Py_None)
-        dict = NULL;
-    else
-        Py_INCREF(dict);
-
-    Py_SETREF(pto->fn, fn);
-    Py_SETREF(pto->args, fnargs);
-    Py_SETREF(pto->kw, kw);
-    Py_XSETREF(pto->dict, dict);
+    Py_INCREF(fnargs);
+    Py_INCREF(kw);
     Py_RETURN_NONE;
 }
 
@@ -344,8 +295,8 @@ static PyTypeObject partial_type = {
     0,                                  /* tp_print */
     0,                                  /* tp_getattr */
     0,                                  /* tp_setattr */
-    0,                                  /* tp_compare */
-    0,                                  /* tp_repr */
+    0,                                  /* tp_reserved */
+    (reprfunc)partial_repr,             /* tp_repr */
     0,                                  /* tp_as_number */
     0,                                  /* tp_as_sequence */
     0,                                  /* tp_as_mapping */
@@ -356,7 +307,7 @@ static PyTypeObject partial_type = {
     PyObject_GenericSetAttr,            /* tp_setattro */
     0,                                  /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC |
-        Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_WEAKREFS,         /* tp_flags */
+        Py_TPFLAGS_BASETYPE,            /* tp_flags */
     partial_doc,                        /* tp_doc */
     (traverseproc)partial_traverse,     /* tp_traverse */
     0,                                  /* tp_clear */
@@ -379,18 +330,107 @@ static PyTypeObject partial_type = {
 };
 
 
+/* reduce (used to be a builtin) ********************************************/
+
+static PyObject *
+functools_reduce(PyObject *self, PyObject *args)
+{
+    PyObject *seq, *func, *result = NULL, *it;
+
+    if (!PyArg_UnpackTuple(args, "reduce", 2, 3, &func, &seq, &result))
+        return NULL;
+    if (result != NULL)
+        Py_INCREF(result);
+
+    it = PyObject_GetIter(seq);
+    if (it == NULL) {
+        if (PyErr_ExceptionMatches(PyExc_TypeError))
+            PyErr_SetString(PyExc_TypeError,
+                            "reduce() arg 2 must support iteration");
+        Py_XDECREF(result);
+        return NULL;
+    }
+
+    if ((args = PyTuple_New(2)) == NULL)
+        goto Fail;
+
+    for (;;) {
+        PyObject *op2;
+
+        if (args->ob_refcnt > 1) {
+            Py_DECREF(args);
+            if ((args = PyTuple_New(2)) == NULL)
+                goto Fail;
+        }
+
+        op2 = PyIter_Next(it);
+        if (op2 == NULL) {
+            if (PyErr_Occurred())
+                goto Fail;
+            break;
+        }
+
+        if (result == NULL)
+            result = op2;
+        else {
+            PyTuple_SetItem(args, 0, result);
+            PyTuple_SetItem(args, 1, op2);
+            if ((result = PyEval_CallObject(func, args)) == NULL)
+                goto Fail;
+        }
+    }
+
+    Py_DECREF(args);
+
+    if (result == NULL)
+        PyErr_SetString(PyExc_TypeError,
+                   "reduce() of empty sequence with no initial value");
+
+    Py_DECREF(it);
+    return result;
+
+Fail:
+    Py_XDECREF(args);
+    Py_XDECREF(result);
+    Py_DECREF(it);
+    return NULL;
+}
+
+PyDoc_STRVAR(functools_reduce_doc,
+"reduce(function, sequence[, initial]) -> value\n\
+\n\
+Apply a function of two arguments cumulatively to the items of a sequence,\n\
+from left to right, so as to reduce the sequence to a single value.\n\
+For example, reduce(lambda x, y: x+y, [1, 2, 3, 4, 5]) calculates\n\
+((((1+2)+3)+4)+5).  If initial is present, it is placed before the items\n\
+of the sequence in the calculation, and serves as a default when the\n\
+sequence is empty.");
+
 /* module level code ********************************************************/
 
 PyDoc_STRVAR(module_doc,
 "Tools that operate on functions.");
 
 static PyMethodDef module_methods[] = {
-    {"reduce",          functools_reduce,     METH_VARARGS, reduce_doc},
+    {"reduce",          functools_reduce,     METH_VARARGS, functools_reduce_doc},
     {NULL,              NULL}           /* sentinel */
 };
 
+
+static struct PyModuleDef _functoolsmodule = {
+    PyModuleDef_HEAD_INIT,
+    "_functools",
+    module_doc,
+    -1,
+    module_methods,
+    NULL,
+    NULL,
+    NULL,
+    NULL
+};
+
 PyMODINIT_FUNC
-init_functools(void)
+PyInit__functools(void)
 {
     int i;
     PyObject *m;
@@ -400,16 +440,19 @@ init_functools(void)
         NULL
     };
 
-    m = Py_InitModule3("_functools", module_methods, module_doc);
+    m = PyModule_Create(&_functoolsmodule);
     if (m == NULL)
-        return;
+        return NULL;
 
     for (i=0 ; typelist[i] != NULL ; i++) {
-        if (PyType_Ready(typelist[i]) < 0)
-            return;
+        if (PyType_Ready(typelist[i]) < 0) {
+            Py_DECREF(m);
+            return NULL;
+        }
         name = strchr(typelist[i]->tp_name, '.');
         assert (name != NULL);
         Py_INCREF(typelist[i]);
         PyModule_AddObject(m, name+1, (PyObject *)typelist[i]);
     }
+    return m;
 }

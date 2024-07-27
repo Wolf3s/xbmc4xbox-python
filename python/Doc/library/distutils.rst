@@ -12,31 +12,18 @@ additional modules into a Python installation.  The new modules may be either
 100%-pure Python, or may be extension modules written in C, or may be
 collections of Python packages which include modules coded in both Python and C.
 
-Most Python users will *not* want to use this module directly, but instead
-use the cross-version tools maintained by the Python Packaging Authority. In
-particular,
-`setuptools <https://setuptools.readthedocs.io/en/latest/>`__ is an
-enhanced alternative to :mod:`distutils` that provides:
+This package is discussed in two separate chapters:
 
-* support for declaring project dependencies
-* additional mechanisms for configuring which files to include in source
-  releases (including plugins for integration with version control systems)
-* the ability to declare project "entry points", which can be used as the
-  basis for application plugin systems
-* the ability to automatically generate Windows command line executables at
-  installation time rather than needing to prebuild them
-* consistent behaviour across all supported Python versions
 
-The recommended `pip <https://pip.pypa.io/>`__ installer runs all
-``setup.py`` scripts with ``setuptools``, even if the script itself only
-imports ``distutils``. Refer to the
-`Python Packaging User Guide <https://packaging.python.org>`_ for more
-information.
+.. seealso::
 
-For the benefits of packaging tool authors and users seeking a deeper
-understanding of the details of the current packaging and distribution
-system, the legacy :mod:`distutils` based user documentation and API
-reference remain available:
+   :ref:`distutils-index`
+      The manual for developers and packagers of Python modules.  This describes
+      how to prepare :mod:`distutils`\ -based packages so that they may be
+      easily installed into an existing Python installation.
 
-* :ref:`install-index`
-* :ref:`distutils-index`
+   :ref:`install-index`
+      An "administrators" manual which includes information on installing
+      modules into an existing Python installation.  You do not need to be a
+      Python programmer to read this manual.
+

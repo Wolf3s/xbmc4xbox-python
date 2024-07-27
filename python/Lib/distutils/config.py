@@ -4,7 +4,7 @@ Provides the PyPIRCCommand class, the base class for the command classes
 that uses .pypirc in the distutils.command package.
 """
 import os
-from ConfigParser import ConfigParser
+from configparser import ConfigParser
 
 from distutils.cmd import Command
 
@@ -21,7 +21,7 @@ password:%s
 class PyPIRCCommand(Command):
     """Base command that knows how to handle the .pypirc file
     """
-    DEFAULT_REPOSITORY = 'https://upload.pypi.org/legacy/'
+    DEFAULT_REPOSITORY = 'https://pypi.python.org/pypi'
     DEFAULT_REALM = 'pypi'
     repository = None
     realm = None
@@ -42,11 +42,8 @@ class PyPIRCCommand(Command):
     def _store_pypirc(self, username, password):
         """Creates a default .pypirc file."""
         rc = self._get_rc_file()
-        f = os.fdopen(os.open(rc, os.O_CREAT | os.O_WRONLY, 0600), 'w')
-        try:
+        with os.fdopen(os.open(rc, os.O_CREAT | os.O_WRONLY, 0o600), 'w') as f:
             f.write(DEFAULT_PYPIRC % (username, password))
-        finally:
-            f.close()
 
     def _read_pypirc(self):
         """Reads the .pypirc file."""
@@ -54,6 +51,8 @@ class PyPIRCCommand(Command):
         if os.path.exists(rc):
             self.announce('Using PyPI login from %s' % rc)
             repository = self.repository or self.DEFAULT_REPOSITORY
+            realm = self.realm or self.DEFAULT_REALM
+
             config = ConfigParser()
             config.read(rc)
             sections = config.sections()

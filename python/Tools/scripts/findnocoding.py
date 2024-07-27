@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """List all those Python files that require a coding directive
 
@@ -28,22 +28,21 @@ except ImportError:
     pysource = pysource()
 
 
-    print >>sys.stderr, ("The pysource module is not available; "
-                         "no sophisticated Python source file search will be done.")
+    print("The pysource module is not available; "
+                         "no sophisticated Python source file search will be done.", file=sys.stderr)
 
 
-decl_re = re.compile(r'^[ \t\f]*#.*?coding[:=][ \t]*([-\w.]+)')
-blank_re = re.compile(r'^[ \t\f]*(?:[#\r\n]|$)')
+decl_re = re.compile(r"coding[=:]\s*([-\w.]+)")
 
 def get_declaration(line):
-    match = decl_re.match(line)
+    match = decl_re.search(line)
     if match:
         return match.group(1)
-    return b''
+    return ''
 
 def has_correct_encoding(text, codec):
     try:
-        unicode(text, codec)
+        str(text, codec)
     except UnicodeDecodeError:
         return False
     else:
@@ -58,17 +57,16 @@ def needs_declaration(fullpath):
     line1 = infile.readline()
     line2 = infile.readline()
 
-    if (get_declaration(line1) or
-        blank_re.match(line1) and get_declaration(line2)):
+    if get_declaration(line1) or get_declaration(line2):
         # the file does have an encoding declaration, so trust it
         infile.close()
         return False
 
-    # check the whole file for non-ASCII characters
+    # check the whole file for non utf-8 characters
     rest = infile.read()
     infile.close()
 
-    if has_correct_encoding(line1+line2+rest, "ascii"):
+    if has_correct_encoding(line1+line2+rest, "utf-8"):
         return False
 
     return True
@@ -78,29 +76,31 @@ usage = """Usage: %s [-cd] paths...
     -c: recognize Python source files trying to compile them
     -d: debug output""" % sys.argv[0]
 
-try:
-    opts, args = getopt.getopt(sys.argv[1:], 'cd')
-except getopt.error, msg:
-    print >>sys.stderr, msg
-    print >>sys.stderr, usage
-    sys.exit(1)
+if __name__ == '__main__':
 
-is_python = pysource.looks_like_python
-debug = False
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], 'cd')
+    except getopt.error as msg:
+        print(msg, file=sys.stderr)
+        print(usage, file=sys.stderr)
+        sys.exit(1)
 
-for o, a in opts:
-    if o == '-c':
-        is_python = pysource.can_be_compiled
-    elif o == '-d':
-        debug = True
+    is_python = pysource.looks_like_python
+    debug = False
 
-if not args:
-    print >>sys.stderr, usage
-    sys.exit(1)
+    for o, a in opts:
+        if o == '-c':
+            is_python = pysource.can_be_compiled
+        elif o == '-d':
+            debug = True
 
-for fullpath in pysource.walk_python_files(args, is_python):
-    if debug:
-        print "Testing for coding: %s" % fullpath
-    result = needs_declaration(fullpath)
-    if result:
-        print fullpath
+    if not args:
+        print(usage, file=sys.stderr)
+        sys.exit(1)
+
+    for fullpath in pysource.walk_python_files(args, is_python):
+        if debug:
+            print("Testing for coding: %s" % fullpath)
+        result = needs_declaration(fullpath)
+        if result:
+            print(fullpath)

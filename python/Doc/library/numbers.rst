@@ -4,8 +4,6 @@
 .. module:: numbers
    :synopsis: Numeric abstract base classes (Complex, Real, Integral, etc.).
 
-.. versionadded:: 2.6
-
 
 The :mod:`numbers` module (:pep:`3141`) defines a hierarchy of numeric
 :term:`abstract base classes <abstract base class>` which progressively define
@@ -73,10 +71,10 @@ The numeric tower
 
 .. class:: Integral
 
-   Subtypes :class:`Rational` and adds a conversion to :class:`int`.  Provides
-   defaults for :func:`float`, :attr:`~Rational.numerator`, and
-   :attr:`~Rational.denominator`.  Adds abstract methods for ``**`` and
-   bit-string operations: ``<<``, ``>>``, ``&``, ``^``, ``|``, ``~``.
+   Subtypes :class:`Rational` and adds a conversion to :class:`int`.
+   Provides defaults for :func:`float`, :attr:`~Rational.numerator`, and
+   :attr:`~Rational.denominator`, and bit-string operations: ``<<``,
+   ``>>``, ``&``, ``^``, ``|``, ``~``.
 
 
 Notes for type implementors
@@ -183,7 +181,7 @@ forward and reverse instances of any given operator. For example,
 
     def _operator_fallbacks(monomorphic_operator, fallback_operator):
         def forward(a, b):
-            if isinstance(b, (int, long, Fraction)):
+            if isinstance(b, (int, Fraction)):
                 return monomorphic_operator(a, b)
             elif isinstance(b, float):
                 return fallback_operator(float(a), b)

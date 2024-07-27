@@ -13,10 +13,9 @@ like the GNU programs :program:`gzip` and :program:`gunzip` would.
 
 The data compression is provided by the :mod:`zlib` module.
 
-The :mod:`gzip` module provides the :class:`GzipFile` class which is modeled
-after Python's File Object. The :class:`GzipFile` class reads and writes
-:program:`gzip`\ -format files, automatically compressing or decompressing the
-data so that it looks like an ordinary file object.
+The :mod:`gzip` module provides the :class:`GzipFile` class. The :class:`GzipFile`
+class reads and writes :program:`gzip`\ -format files, automatically compressing
+or decompressing the data so that it looks like an ordinary :term:`file object`.
 
 Note that additional file formats which can be decompressed by the
 :program:`gzip` and :program:`gunzip` programs, such  as those produced by
@@ -25,29 +24,31 @@ Note that additional file formats which can be decompressed by the
 The module defines the following items:
 
 
-.. class:: GzipFile([filename[, mode[, compresslevel[, fileobj[, mtime]]]]])
+.. class:: GzipFile(filename=None, mode=None, compresslevel=9, fileobj=None, mtime=None)
 
-   Constructor for the :class:`GzipFile` class, which simulates most of the methods
-   of a file object, with the exception of the :meth:`readinto` and
-   :meth:`truncate` methods.  At least one of *fileobj* and *filename* must be
-   given a non-trivial value.
+   Constructor for the :class:`GzipFile` class, which simulates most of the
+   methods of a :term:`file object`, with the exception of the :meth:`truncate`
+   method.  At least one of *fileobj* and *filename* must be given a non-trivial
+   value.
 
    The new class instance is based on *fileobj*, which can be a regular file, a
-   :class:`~StringIO.StringIO` object, or any other object which simulates a file.  It
+   :class:`StringIO` object, or any other object which simulates a file.  It
    defaults to ``None``, in which case *filename* is opened to provide a file
    object.
 
    When *fileobj* is not ``None``, the *filename* argument is only used to be
-   included in the :program:`gzip` file header, which may include the original
+   included in the :program:`gzip` file header, which may includes the original
    filename of the uncompressed file.  It defaults to the filename of *fileobj*, if
    discernible; otherwise, it defaults to the empty string, and in this case the
    original filename is not included in the header.
 
    The *mode* argument can be any of ``'r'``, ``'rb'``, ``'a'``, ``'ab'``, ``'w'``,
    or ``'wb'``, depending on whether the file will be read or written.  The default
-   is the mode of *fileobj* if discernible; otherwise, the default is ``'rb'``. If
-   not given, the 'b' flag will be added to the mode to ensure the file is opened
-   in binary mode for cross-platform portability.
+   is the mode of *fileobj* if discernible; otherwise, the default is ``'rb'``.
+
+   Note that the file is always opened in binary mode; text mode is not
+   supported. If you need to read a compressed file in text mode, wrap your
+   :class:`GzipFile` with an :class:`io.TextIOWrapper`.
 
    The *compresslevel* argument is an integer from ``0`` to ``9`` controlling
    the level of compression; ``1`` is fastest and produces the least
@@ -65,27 +66,55 @@ The module defines the following items:
 
    Calling a :class:`GzipFile` object's :meth:`close` method does not close
    *fileobj*, since you might wish to append more material after the compressed
-   data.  This also allows you to pass a :class:`~StringIO.StringIO` object opened for
+   data.  This also allows you to pass a :class:`io.BytesIO` object opened for
    writing as *fileobj*, and retrieve the resulting memory buffer using the
-   :class:`~StringIO.StringIO` object's :meth:`~StringIO.StringIO.getvalue` method.
+   :class:`io.BytesIO` object's :meth:`~io.BytesIO.getvalue` method.
 
-   :class:`GzipFile` supports iteration and the :keyword:`with` statement.
+   :class:`GzipFile` supports the :class:`io.BufferedIOBase` interface,
+   including iteration and the :keyword:`with` statement.  Only the
+   :meth:`read1` and :meth:`truncate` methods aren't implemented.
 
-   .. versionchanged:: 2.7
+   :class:`GzipFile` also provides the following method:
+
+   .. method:: peek([n])
+
+      Read *n* uncompressed bytes without advancing the file position.
+      At most one single read on the compressed stream is done to satisfy
+      the call.  The number of bytes returned may be more or less than
+      requested.
+
+      .. versionadded:: 3.2
+
+   .. versionchanged:: 3.1
       Support for the :keyword:`with` statement was added.
 
-   .. versionchanged:: 2.7
+   .. versionchanged:: 3.2
       Support for zero-padded files was added.
 
-   .. versionadded:: 2.7
-      The *mtime* argument.
+   .. versionchanged:: 3.2
+      Support for unseekable files was added.
 
 
-.. function:: open(filename[, mode[, compresslevel]])
+.. function:: open(filename, mode='rb', compresslevel=9)
 
    This is a shorthand for ``GzipFile(filename,`` ``mode,`` ``compresslevel)``.
    The *filename* argument is required; *mode* defaults to ``'rb'`` and
    *compresslevel* defaults to ``9``.
+
+.. function:: compress(data, compresslevel=9)
+
+   Compress the *data*, returning a :class:`bytes` object containing
+   the compressed data.  *compresslevel* has the same meaning as in
+   the :class:`GzipFile` constructor above.
+
+   .. versionadded:: 3.2
+
+.. function:: decompress(data)
+
+   Decompress the *data*, returning a :class:`bytes` object containing the
+   uncompressed data.
+
+   .. versionadded:: 3.2
 
 
 .. _gzip-usage-examples:
@@ -96,23 +125,28 @@ Examples of usage
 Example of how to read a compressed file::
 
    import gzip
-   with gzip.open('file.txt.gz', 'rb') as f:
+   with gzip.open('/home/joe/file.txt.gz', 'rb') as f:
        file_content = f.read()
 
 Example of how to create a compressed GZIP file::
 
    import gzip
-   content = "Lots of content here"
-   with gzip.open('file.txt.gz', 'wb') as f:
+   content = b"Lots of content here"
+   with gzip.open('/home/joe/file.txt.gz', 'wb') as f:
        f.write(content)
 
 Example of how to GZIP compress an existing file::
 
    import gzip
-   import shutil
-   with open('file.txt', 'rb') as f_in, gzip.open('file.txt.gz', 'wb') as f_out:
-       shutil.copyfileobj(f_in, f_out)
+   with open('/home/joe/file.txt', 'rb') as f_in:
+       with gzip.open('/home/joe/file.txt.gz', 'wb') as f_out:
+           f_out.writelines(f_in)
 
+Example of how to GZIP compress a binary string::
+
+   import gzip
+   s_in = b"Lots of content here"
+   s_out = gzip.compress(s_in)
 
 .. seealso::
 

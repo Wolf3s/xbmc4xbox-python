@@ -5,9 +5,6 @@
    :synopsis: Implementation of the ElementTree API.
 .. moduleauthor:: Fredrik Lundh <fredrik@pythonware.com>
 
-
-.. versionadded:: 2.5
-
 **Source code:** :source:`Lib/xml/etree/ElementTree.py`
 
 --------------
@@ -49,391 +46,16 @@ See http://effbot.org/zone/element-index.htm for tutorials and links to other
 docs.  Fredrik Lundh's page is also the location of the development version of
 the xml.etree.ElementTree.
 
-.. versionchanged:: 2.7
+.. versionchanged:: 3.2
    The ElementTree API is updated to 1.3.  For more information, see
    `Introducing ElementTree 1.3
    <http://effbot.org/zone/elementtree-13-intro.htm>`_.
 
-Tutorial
---------
-
-This is a short tutorial for using :mod:`xml.etree.ElementTree` (``ET`` in
-short).  The goal is to demonstrate some of the building blocks and basic
-concepts of the module.
-
-XML tree and elements
-^^^^^^^^^^^^^^^^^^^^^
-
-XML is an inherently hierarchical data format, and the most natural way to
-represent it is with a tree.  ``ET`` has two classes for this purpose -
-:class:`ElementTree` represents the whole XML document as a tree, and
-:class:`Element` represents a single node in this tree.  Interactions with
-the whole document (reading and writing to/from files) are usually done
-on the :class:`ElementTree` level.  Interactions with a single XML element
-and its sub-elements are done on the :class:`Element` level.
-
-.. _elementtree-parsing-xml:
-
-Parsing XML
-^^^^^^^^^^^
-
-We'll be using the following XML document as the sample data for this section:
-
-.. code-block:: xml
-
-   <?xml version="1.0"?>
-   <data>
-       <country name="Liechtenstein">
-           <rank>1</rank>
-           <year>2008</year>
-           <gdppc>141100</gdppc>
-           <neighbor name="Austria" direction="E"/>
-           <neighbor name="Switzerland" direction="W"/>
-       </country>
-       <country name="Singapore">
-           <rank>4</rank>
-           <year>2011</year>
-           <gdppc>59900</gdppc>
-           <neighbor name="Malaysia" direction="N"/>
-       </country>
-       <country name="Panama">
-           <rank>68</rank>
-           <year>2011</year>
-           <gdppc>13600</gdppc>
-           <neighbor name="Costa Rica" direction="W"/>
-           <neighbor name="Colombia" direction="E"/>
-       </country>
-   </data>
-
-We have a number of ways to import the data.  Reading the file from disk::
-
-   import xml.etree.ElementTree as ET
-   tree = ET.parse('country_data.xml')
-   root = tree.getroot()
-
-Reading the data from a string::
-
-   root = ET.fromstring(country_data_as_string)
-
-:func:`fromstring` parses XML from a string directly into an :class:`Element`,
-which is the root element of the parsed tree.  Other parsing functions may
-create an :class:`ElementTree`.  Check the documentation to be sure.
-
-As an :class:`Element`, ``root`` has a tag and a dictionary of attributes::
-
-   >>> root.tag
-   'data'
-   >>> root.attrib
-   {}
-
-It also has children nodes over which we can iterate::
-
-   >>> for child in root:
-   ...     print child.tag, child.attrib
-   ...
-   country {'name': 'Liechtenstein'}
-   country {'name': 'Singapore'}
-   country {'name': 'Panama'}
-
-Children are nested, and we can access specific child nodes by index::
-
-   >>> root[0][1].text
-   '2008'
-
-Finding interesting elements
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-:class:`Element` has some useful methods that help iterate recursively over all
-the sub-tree below it (its children, their children, and so on).  For example,
-:meth:`Element.iter`::
-
-   >>> for neighbor in root.iter('neighbor'):
-   ...     print neighbor.attrib
-   ...
-   {'name': 'Austria', 'direction': 'E'}
-   {'name': 'Switzerland', 'direction': 'W'}
-   {'name': 'Malaysia', 'direction': 'N'}
-   {'name': 'Costa Rica', 'direction': 'W'}
-   {'name': 'Colombia', 'direction': 'E'}
-
-:meth:`Element.findall` finds only elements with a tag which are direct
-children of the current element.  :meth:`Element.find` finds the *first* child
-with a particular tag, and :attr:`Element.text` accesses the element's text
-content.  :meth:`Element.get` accesses the element's attributes::
-
-   >>> for country in root.findall('country'):
-   ...     rank = country.find('rank').text
-   ...     name = country.get('name')
-   ...     print name, rank
-   ...
-   Liechtenstein 1
-   Singapore 4
-   Panama 68
-
-More sophisticated specification of which elements to look for is possible by
-using :ref:`XPath <elementtree-xpath>`.
-
-Modifying an XML File
-^^^^^^^^^^^^^^^^^^^^^
-
-:class:`ElementTree` provides a simple way to build XML documents and write them to files.
-The :meth:`ElementTree.write` method serves this purpose.
-
-Once created, an :class:`Element` object may be manipulated by directly changing
-its fields (such as :attr:`Element.text`), adding and modifying attributes
-(:meth:`Element.set` method), as well as adding new children (for example
-with :meth:`Element.append`).
-
-Let's say we want to add one to each country's rank, and add an ``updated``
-attribute to the rank element::
-
-   >>> for rank in root.iter('rank'):
-   ...     new_rank = int(rank.text) + 1
-   ...     rank.text = str(new_rank)
-   ...     rank.set('updated', 'yes')
-   ...
-   >>> tree.write('output.xml')
-
-Our XML now looks like this:
-
-.. code-block:: xml
-
-   <?xml version="1.0"?>
-   <data>
-       <country name="Liechtenstein">
-           <rank updated="yes">2</rank>
-           <year>2008</year>
-           <gdppc>141100</gdppc>
-           <neighbor name="Austria" direction="E"/>
-           <neighbor name="Switzerland" direction="W"/>
-       </country>
-       <country name="Singapore">
-           <rank updated="yes">5</rank>
-           <year>2011</year>
-           <gdppc>59900</gdppc>
-           <neighbor name="Malaysia" direction="N"/>
-       </country>
-       <country name="Panama">
-           <rank updated="yes">69</rank>
-           <year>2011</year>
-           <gdppc>13600</gdppc>
-           <neighbor name="Costa Rica" direction="W"/>
-           <neighbor name="Colombia" direction="E"/>
-       </country>
-   </data>
-
-We can remove elements using :meth:`Element.remove`.  Let's say we want to
-remove all countries with a rank higher than 50::
-
-   >>> for country in root.findall('country'):
-   ...     rank = int(country.find('rank').text)
-   ...     if rank > 50:
-   ...         root.remove(country)
-   ...
-   >>> tree.write('output.xml')
-
-Our XML now looks like this:
-
-.. code-block:: xml
-
-   <?xml version="1.0"?>
-   <data>
-       <country name="Liechtenstein">
-           <rank updated="yes">2</rank>
-           <year>2008</year>
-           <gdppc>141100</gdppc>
-           <neighbor name="Austria" direction="E"/>
-           <neighbor name="Switzerland" direction="W"/>
-       </country>
-       <country name="Singapore">
-           <rank updated="yes">5</rank>
-           <year>2011</year>
-           <gdppc>59900</gdppc>
-           <neighbor name="Malaysia" direction="N"/>
-       </country>
-   </data>
-
-Building XML documents
-^^^^^^^^^^^^^^^^^^^^^^
-
-The :func:`SubElement` function also provides a convenient way to create new
-sub-elements for a given element::
-
-   >>> a = ET.Element('a')
-   >>> b = ET.SubElement(a, 'b')
-   >>> c = ET.SubElement(a, 'c')
-   >>> d = ET.SubElement(c, 'd')
-   >>> ET.dump(a)
-   <a><b /><c><d /></c></a>
-
-Parsing XML with Namespaces
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-If the XML input has `namespaces
-<https://en.wikipedia.org/wiki/XML_namespace>`__, tags and attributes
-with prefixes in the form ``prefix:sometag`` get expanded to
-``{uri}sometag`` where the *prefix* is replaced by the full *URI*.
-Also, if there is a `default namespace
-<https://www.w3.org/TR/xml-names/#defaulting>`__,
-that full URI gets prepended to all of the non-prefixed tags.
-
-Here is an XML example that incorporates two namespaces, one with the
-prefix "fictional" and the other serving as the default namespace:
-
-.. code-block:: xml
-
-    <?xml version="1.0"?>
-    <actors xmlns:fictional="http://characters.example.com"
-            xmlns="http://people.example.com">
-        <actor>
-            <name>John Cleese</name>
-            <fictional:character>Lancelot</fictional:character>
-            <fictional:character>Archie Leach</fictional:character>
-        </actor>
-        <actor>
-            <name>Eric Idle</name>
-            <fictional:character>Sir Robin</fictional:character>
-            <fictional:character>Gunther</fictional:character>
-            <fictional:character>Commander Clement</fictional:character>
-        </actor>
-    </actors>
-
-One way to search and explore this XML example is to manually add the
-URI to every tag or attribute in the xpath of a
-:meth:`~Element.find` or :meth:`~Element.findall`::
-
-    root = fromstring(xml_text)
-    for actor in root.findall('{http://people.example.com}actor'):
-        name = actor.find('{http://people.example.com}name')
-        print name.text
-        for char in actor.findall('{http://characters.example.com}character'):
-            print ' |-->', char.text
-
-
-A better way to search the namespaced XML example is to create a
-dictionary with your own prefixes and use those in the search functions::
-
-    ns = {'real_person': 'http://people.example.com',
-          'role': 'http://characters.example.com'}
-
-    for actor in root.findall('real_person:actor', ns):
-        name = actor.find('real_person:name', ns)
-        print name.text
-        for char in actor.findall('role:character', ns):
-            print ' |-->', char.text
-
-These two approaches both output::
-
-    John Cleese
-     |--> Lancelot
-     |--> Archie Leach
-    Eric Idle
-     |--> Sir Robin
-     |--> Gunther
-     |--> Commander Clement
-
-
-Additional resources
-^^^^^^^^^^^^^^^^^^^^
-
-See http://effbot.org/zone/element-index.htm for tutorials and links to other
-docs.
-
-.. _elementtree-xpath:
-
-XPath support
--------------
-
-This module provides limited support for
-`XPath expressions <https://www.w3.org/TR/xpath>`_ for locating elements in a
-tree.  The goal is to support a small subset of the abbreviated syntax; a full
-XPath engine is outside the scope of the module.
-
-Example
-^^^^^^^
-
-Here's an example that demonstrates some of the XPath capabilities of the
-module.  We'll be using the ``countrydata`` XML document from the
-:ref:`Parsing XML <elementtree-parsing-xml>` section::
-
-   import xml.etree.ElementTree as ET
-
-   root = ET.fromstring(countrydata)
-
-   # Top-level elements
-   root.findall(".")
-
-   # All 'neighbor' grand-children of 'country' children of the top-level
-   # elements
-   root.findall("./country/neighbor")
-
-   # Nodes with name='Singapore' that have a 'year' child
-   root.findall(".//year/..[@name='Singapore']")
-
-   # 'year' nodes that are children of nodes with name='Singapore'
-   root.findall(".//*[@name='Singapore']/year")
-
-   # All 'neighbor' nodes that are the second child of their parent
-   root.findall(".//neighbor[2]")
-
-Supported XPath syntax
-^^^^^^^^^^^^^^^^^^^^^^
-
-.. tabularcolumns:: |l|L|
-
-+-----------------------+------------------------------------------------------+
-| Syntax                | Meaning                                              |
-+=======================+======================================================+
-| ``tag``               | Selects all child elements with the given tag.       |
-|                       | For example, ``spam`` selects all child elements     |
-|                       | named ``spam``, and ``spam/egg`` selects all         |
-|                       | grandchildren named ``egg`` in all children named    |
-|                       | ``spam``.                                            |
-+-----------------------+------------------------------------------------------+
-| ``*``                 | Selects all child elements.  For example, ``*/egg``  |
-|                       | selects all grandchildren named ``egg``.             |
-+-----------------------+------------------------------------------------------+
-| ``.``                 | Selects the current node.  This is mostly useful     |
-|                       | at the beginning of the path, to indicate that it's  |
-|                       | a relative path.                                     |
-+-----------------------+------------------------------------------------------+
-| ``//``                | Selects all subelements, on all levels beneath the   |
-|                       | current  element.  For example, ``.//egg`` selects   |
-|                       | all ``egg`` elements in the entire tree.             |
-+-----------------------+------------------------------------------------------+
-| ``..``                | Selects the parent element.                          |
-+-----------------------+------------------------------------------------------+
-| ``[@attrib]``         | Selects all elements that have the given attribute.  |
-+-----------------------+------------------------------------------------------+
-| ``[@attrib='value']`` | Selects all elements for which the given attribute   |
-|                       | has the given value.  The value cannot contain       |
-|                       | quotes.                                              |
-+-----------------------+------------------------------------------------------+
-| ``[tag]``             | Selects all elements that have a child named         |
-|                       | ``tag``.  Only immediate children are supported.     |
-+-----------------------+------------------------------------------------------+
-| ``[tag='text']``      | Selects all elements that have a child named         |
-|                       | ``tag`` whose complete text content, including       |
-|                       | descendants, equals the given ``text``.              |
-+-----------------------+------------------------------------------------------+
-| ``[position]``        | Selects all elements that are located at the given   |
-|                       | position.  The position can be either an integer     |
-|                       | (1 is the first position), the expression ``last()`` |
-|                       | (for the last position), or a position relative to   |
-|                       | the last position (e.g. ``last()-1``).               |
-+-----------------------+------------------------------------------------------+
-
-Predicates (expressions within square brackets) must be preceded by a tag
-name, an asterisk, or another predicate.  ``position`` predicates must be
-preceded by a tag name.
-
-Reference
----------
 
 .. _elementtree-functions:
 
 Functions
-^^^^^^^^^
+---------
 
 
 .. function:: Comment(text=None)
@@ -469,7 +91,7 @@ Functions
    optional parser instance.  If not given, the standard :class:`XMLParser`
    parser is used.  Returns an :class:`Element` instance.
 
-   .. versionadded:: 2.7
+   .. versionadded:: 3.2
 
 
 .. function:: iselement(element)
@@ -481,12 +103,15 @@ Functions
 .. function:: iterparse(source, events=None, parser=None)
 
    Parses an XML section into an element tree incrementally, and reports what's
-   going on to the user.  *source* is a filename or file object containing XML
-   data.  *events* is a list of events to report back.  If omitted, only "end"
-   events are reported.  *parser* is an optional parser instance.  If not
-   given, the standard :class:`XMLParser` parser is used.  *parser* is not
-   supported by ``cElementTree``. Returns an :term:`iterator` providing
-   ``(event, elem)`` pairs.
+   going on to the user.  *source* is a filename or :term:`file object`
+   containing XML data.  *events* is a list of events to report back.  The
+   supported events are the strings ``"start"``, ``"end"``, ``"start-ns"``
+   and ``"end-ns"`` (the "ns" events are used to get detailed namespace
+   information).  If *events* is omitted, only ``"end"`` events are reported.
+   *parser* is an optional parser instance.  If not given, the standard
+   :class:`XMLParser` parser is used.  *parser* is not supported by
+   ``cElementTree``.  Returns an :term:`iterator` providing ``(event, elem)``
+   pairs.
 
    .. note::
 
@@ -523,7 +148,7 @@ Functions
    attributes in this namespace will be serialized with the given prefix, if at
    all possible.
 
-   .. versionadded:: 2.7
+   .. versionadded:: 3.2
 
 
 .. function:: SubElement(parent, tag, attrib={}, **extra)
@@ -542,22 +167,24 @@ Functions
 
    Generates a string representation of an XML element, including all
    subelements.  *element* is an :class:`Element` instance.  *encoding* [1]_ is
-   the output encoding (default is US-ASCII).  *method* is either ``"xml"``,
-   ``"html"`` or ``"text"`` (default is ``"xml"``).  Returns an encoded string
-   containing the XML data.
+   the output encoding (default is US-ASCII).  Use ``encoding="unicode"`` to
+   generate a Unicode string.  *method* is either ``"xml"``,
+   ``"html"`` or ``"text"`` (default is ``"xml"``).  Returns an (optionally)
+   encoded string containing the XML data.
 
 
 .. function:: tostringlist(element, encoding="us-ascii", method="xml")
 
    Generates a string representation of an XML element, including all
    subelements.  *element* is an :class:`Element` instance.  *encoding* [1]_ is
-   the output encoding (default is US-ASCII).   *method* is either ``"xml"``,
-   ``"html"`` or ``"text"`` (default is ``"xml"``).  Returns a list of encoded
-   strings containing the XML data.  It does not guarantee any specific
-   sequence, except that ``"".join(tostringlist(element)) ==
+   the output encoding (default is US-ASCII).  Use ``encoding="unicode"`` to
+   generate a Unicode string.  *method* is either ``"xml"``,
+   ``"html"`` or ``"text"`` (default is ``"xml"``).  Returns a list of
+   (optionally) encoded strings containing the XML data.  It does not guarantee
+   any specific sequence, except that ``"".join(tostringlist(element)) ==
    tostring(element)``.
 
-   .. versionadded:: 2.7
+   .. versionadded:: 3.2
 
 
 .. function:: XML(text, parser=None)
@@ -580,7 +207,8 @@ Functions
 .. _elementtree-element-objects:
 
 Element Objects
-^^^^^^^^^^^^^^^
+---------------
+
 
 .. class:: Element(tag, attrib={}, **extra)
 
@@ -600,29 +228,21 @@ Element Objects
 
 
    .. attribute:: text
-                  tail
 
-      These attributes can be used to hold additional data associated with
-      the element.  Their values are usually strings but may be any
-      application-specific object.  If the element is created from
-      an XML file, the *text* attribute holds either the text between
-      the element's start tag and its first child or end tag, or ``None``, and
-      the *tail* attribute holds either the text between the element's
-      end tag and the next tag, or ``None``.  For the XML data
+      The *text* attribute can be used to hold additional data associated with
+      the element.  As the name implies this attribute is usually a string but
+      may be any application-specific object.  If the element is created from
+      an XML file the attribute will contain any text found between the element
+      tags.
 
-      .. code-block:: xml
 
-         <a><b>1<c>2<d/>3</c></b>4</a>
+   .. attribute:: tail
 
-      the *a* element has ``None`` for both *text* and *tail* attributes,
-      the *b* element has *text* ``"1"`` and *tail* ``"4"``,
-      the *c* element has *text* ``"2"`` and *tail* ``None``,
-      and the *d* element has *text* ``None`` and *tail* ``"3"``.
-
-      To collect the inner text of an element, see :meth:`itertext`, for
-      example ``"".join(element.itertext())``.
-
-      Applications may store arbitrary objects in these attributes.
+      The *tail* attribute can be used to hold additional data associated with
+      the element.  This attribute is usually a string but may be any
+      application-specific object.  If the element is created from an XML file
+      the attribute will contain any text found after the element's end tag and
+      before the next tag.
 
 
    .. attribute:: attrib
@@ -639,7 +259,7 @@ Element Objects
    .. method:: clear()
 
       Resets an element.  This function removes all subelements, clears all
-      attributes, and sets the text and tail attributes to ``None``.
+      attributes, and sets the text and tail attributes to None.
 
 
    .. method:: get(key, default=None)
@@ -679,7 +299,7 @@ Element Objects
       Appends *subelements* from a sequence object with zero or more elements.
       Raises :exc:`AssertionError` if a subelement is not a valid object.
 
-      .. versionadded:: 2.7
+      .. versionadded:: 3.2
 
 
    .. method:: find(match)
@@ -704,13 +324,13 @@ Element Objects
 
    .. method:: getchildren()
 
-      .. deprecated:: 2.7
+      .. deprecated:: 3.2
          Use ``list(elem)`` or iteration.
 
 
    .. method:: getiterator(tag=None)
 
-      .. deprecated:: 2.7
+      .. deprecated:: 3.2
          Use method :meth:`Element.iter` instead.
 
 
@@ -727,7 +347,7 @@ Element Objects
       elements whose tag equals *tag* are returned from the iterator.  If the
       tree structure is modified during iteration, the result is undefined.
 
-      .. versionadded:: 2.7
+      .. versionadded:: 3.2
 
 
    .. method:: iterfind(match)
@@ -735,7 +355,7 @@ Element Objects
       Finds all matching subelements, by tag name or path.  Returns an iterable
       yielding all matching elements in document order.
 
-      .. versionadded:: 2.7
+      .. versionadded:: 3.2
 
 
    .. method:: itertext()
@@ -743,7 +363,7 @@ Element Objects
       Creates a text iterator.  The iterator loops over this element and all
       subelements, in document order, and returns all inner text.
 
-      .. versionadded:: 2.7
+      .. versionadded:: 3.2
 
 
    .. method:: makeelement(tag, attrib)
@@ -759,9 +379,8 @@ Element Objects
       or contents.
 
    :class:`Element` objects also support the following sequence type methods
-   for working with subelements: :meth:`~object.__delitem__`,
-   :meth:`~object.__getitem__`, :meth:`~object.__setitem__`,
-   :meth:`~object.__len__`.
+   for working with subelements: :meth:`__delitem__`, :meth:`__getitem__`,
+   :meth:`__setitem__`, :meth:`__len__`.
 
    Caution: Elements with no subelements will test as ``False``.  This behavior
    will change in future versions.  Use specific ``len(elem)`` or ``elem is
@@ -770,16 +389,16 @@ Element Objects
      element = root.find('foo')
 
      if not element:  # careful!
-         print "element not found, or element has no subelements"
+         print("element not found, or element has no subelements")
 
      if element is None:
-         print "element not found"
+         print("element not found")
 
 
 .. _elementtree-elementtree-objects:
 
 ElementTree Objects
-^^^^^^^^^^^^^^^^^^^
+-------------------
 
 
 .. class:: ElementTree(element=None, file=None)
@@ -816,7 +435,7 @@ ElementTree Objects
 
    .. method:: getiterator(tag=None)
 
-      .. deprecated:: 2.7
+      .. deprecated:: 3.2
          Use method :meth:`ElementTree.iter` instead.
 
 
@@ -829,7 +448,7 @@ ElementTree Objects
 
       Creates and returns a tree iterator for the root element.  The iterator
       loops over all elements in this tree, in section order.  *tag* is the tag
-      to look for (default is to return all elements).
+      to look for (default is to return all elements)
 
 
    .. method:: iterfind(match)
@@ -838,14 +457,14 @@ ElementTree Objects
       getroot().iterfind(match). Returns an iterable yielding all matching
       elements in document order.
 
-      .. versionadded:: 2.7
+      .. versionadded:: 3.2
 
 
    .. method:: parse(source, parser=None)
 
       Loads an external XML section into this element tree.  *source* is a file
-      name or file object.  *parser* is an optional parser instance.  If not
-      given, the standard XMLParser parser is used.  Returns the section
+      name or :term:`file object`.  *parser* is an optional parser instance.
+      If not given, the standard XMLParser parser is used.  Returns the section
       root element.
 
 
@@ -853,13 +472,14 @@ ElementTree Objects
                      default_namespace=None, method="xml")
 
       Writes the element tree to a file, as XML.  *file* is a file name, or a
-      file object opened for writing.  *encoding* [1]_ is the output encoding
-      (default is US-ASCII).  *xml_declaration* controls if an XML declaration
-      should be added to the file.  Use ``False`` for never, ``True`` for always, ``None``
-      for only if not US-ASCII or UTF-8 (default is ``None``).  *default_namespace*
-      sets the default XML namespace (for "xmlns").  *method* is either
-      ``"xml"``, ``"html"`` or ``"text"`` (default is ``"xml"``).  Returns an
-      encoded string.
+      :term:`file object` opened for writing.  *encoding* [1]_ is the output
+      encoding (default is US-ASCII).  Use ``encoding="unicode"`` to write a
+      Unicode string.  *xml_declaration* controls if an XML declaration
+      should be added to the file.  Use False for never, True for always, None
+      for only if not US-ASCII or UTF-8 or Unicode (default is None).
+      *default_namespace* sets the default XML namespace (for "xmlns").
+      *method* is either ``"xml"``, ``"html"`` or ``"text"`` (default is
+      ``"xml"``).  Returns an (optionally) encoded string.
 
 This is the XML file that is going to be manipulated::
 
@@ -887,13 +507,12 @@ Example of changing the attribute "target" of every link in first paragraph::
     [<Element 'a' at 0xb77ec2ac>, <Element 'a' at 0xb77ec1cc>]
     >>> for i in links:             # Iterates through all found links
     ...     i.attrib["target"] = "blank"
-    ...
     >>> tree.write("output.xhtml")
 
 .. _elementtree-qname-objects:
 
 QName Objects
-^^^^^^^^^^^^^
+-------------
 
 
 .. class:: QName(text_or_uri, tag=None)
@@ -902,14 +521,14 @@ QName Objects
    to get proper namespace handling on output.  *text_or_uri* is a string
    containing the QName value, in the form {uri}local, or, if the tag argument
    is given, the URI part of a QName.  If *tag* is given, the first argument is
-   interpreted as a URI, and this argument is interpreted as a local name.
+   interpreted as an URI, and this argument is interpreted as a local name.
    :class:`QName` instances are opaque.
 
 
 .. _elementtree-treebuilder-objects:
 
 TreeBuilder Objects
-^^^^^^^^^^^^^^^^^^^
+-------------------
 
 
 .. class:: TreeBuilder(element_factory=None)
@@ -954,13 +573,13 @@ TreeBuilder Objects
       the public identifier.  *system* is the system identifier.  This method
       does not exist on the default :class:`TreeBuilder` class.
 
-      .. versionadded:: 2.7
+      .. versionadded:: 3.2
 
 
 .. _elementtree-xmlparser-objects:
 
 XMLParser Objects
-^^^^^^^^^^^^^^^^^
+-----------------
 
 
 .. class:: XMLParser(html=0, target=None, encoding=None)
@@ -980,7 +599,7 @@ XMLParser Objects
 
    .. method:: doctype(name, pubid, system)
 
-      .. deprecated:: 2.7
+      .. deprecated:: 3.2
          Define the :meth:`TreeBuilder.doctype` method on a custom TreeBuilder
          target.
 
@@ -1031,7 +650,7 @@ This is an example of counting the maximum depth of an XML file::
 
 .. rubric:: Footnotes
 
-.. [1] The encoding string included in XML output should conform to the
+.. [#] The encoding string included in XML output should conform to the
    appropriate standards.  For example, "UTF-8" is valid, but "UTF8" is
-   not.  See https://www.w3.org/TR/2006/REC-xml11-20060816/#NT-EncodingDecl
-   and https://www.iana.org/assignments/character-sets/character-sets.xhtml.
+   not.  See http://www.w3.org/TR/2006/REC-xml11-20060816/#NT-EncodingDecl
+   and http://www.iana.org/assignments/character-sets.

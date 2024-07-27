@@ -56,7 +56,7 @@ must use the platform malloc heap(s), or shared memory, or C++ local storage or
 operator new), you must first allocate the object with your custom allocator,
 then pass its pointer to PyObject_{Init, InitVar} for filling in its Python-
 specific fields:  reference count, type pointer, possibly others.  You should
-be aware that Python has no control over these objects because they don't
+be aware that Python no control over these objects because they don't
 cooperate with the Python memory manager.  Such objects may not be eligible
 for automatic garbage collection and you have to make sure that they are
 released accordingly whenever their destructor gets called (cf. the specific
@@ -137,9 +137,6 @@ PyAPI_FUNC(void) _PyMem_DebugFree(void *p);
 
 #define PyObject_Del            PyObject_Free
 #define PyObject_DEL            PyObject_FREE
-
-/* for source compatibility with 2.2 */
-#define _PyObject_Del           PyObject_Free
 
 /*
  * Generic object allocator interface
@@ -245,32 +242,15 @@ PyAPI_FUNC(PyVarObject *) _PyObject_GC_Resize(PyVarObject *, Py_ssize_t);
 #define PyObject_GC_Resize(type, op, n) \
                 ( (type *) _PyObject_GC_Resize((PyVarObject *)(op), (n)) )
 
-/* for source compatibility with 2.2 */
-#define _PyObject_GC_Del PyObject_GC_Del
-
-/*
- * Former over-aligned definition of PyGC_Head, used to compute the size of the
- * padding for the new version below.
- */
-union _gc_head;
-union _gc_head_old {
-    struct {
-        union _gc_head_old *gc_next;
-        union _gc_head_old *gc_prev;
-        Py_ssize_t gc_refs;
-    } gc;
-    long double dummy;
-};
-
 /* GC information is stored BEFORE the object structure. */
+#ifndef Py_LIMITED_API
 typedef union _gc_head {
     struct {
         union _gc_head *gc_next;
         union _gc_head *gc_prev;
         Py_ssize_t gc_refs;
     } gc;
-    double dummy; /* Force at least 8-byte alignment. */
-    char dummy_padding[sizeof(union _gc_head_old)];
+    long double dummy;  /* force worst-case alignment */
 } PyGC_Head;
 
 extern PyGC_Head *_PyGC_generation0;
@@ -316,7 +296,7 @@ extern PyGC_Head *_PyGC_generation0;
 #define _PyObject_GC_MAY_BE_TRACKED(obj) \
     (PyObject_IS_GC(obj) && \
         (!PyTuple_CheckExact(obj) || _PyObject_GC_IS_TRACKED(obj)))
-
+#endif /* Py_LIMITED_API */
 
 PyAPI_FUNC(PyObject *) _PyObject_GC_Malloc(size_t);
 PyAPI_FUNC(PyObject *) _PyObject_GC_New(PyTypeObject *);
@@ -345,20 +325,9 @@ PyAPI_FUNC(void) PyObject_GC_Del(void *);
         }                                                               \
     } while (0)
 
-/* This is here for the sake of backwards compatibility.  Extensions that
- * use the old GC API will still compile but the objects will not be
- * tracked by the GC. */
-#define PyGC_HEAD_SIZE 0
-#define PyObject_GC_Init(op)
-#define PyObject_GC_Fini(op)
-#define PyObject_AS_GC(op) (op)
-#define PyObject_FROM_GC(op) (op)
-
 
 /* Test if a type supports weak references */
-#define PyType_SUPPORTS_WEAKREFS(t) \
-    (PyType_HasFeature((t), Py_TPFLAGS_HAVE_WEAKREFS) \
-     && ((t)->tp_weaklistoffset > 0))
+#define PyType_SUPPORTS_WEAKREFS(t) ((t)->tp_weaklistoffset > 0)
 
 #define PyObject_GET_WEAKREFS_LISTPTR(o) \
     ((PyObject **) (((char *) (o)) + Py_TYPE(o)->tp_weaklistoffset))

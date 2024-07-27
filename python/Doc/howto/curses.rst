@@ -35,7 +35,7 @@ before X is available.
 The curses library hides all the details of different terminals, and provides
 the programmer with an abstraction of a display, containing multiple
 non-overlapping windows.  The contents of a window can be changed in various
-ways---adding text, erasing it, changing its appearance---and the curses library
+ways-- adding text, erasing it, changing its appearance--and the curses library
 will automagically figure out what control codes need to be sent to the terminal
 to produce the right output.
 
@@ -122,12 +122,13 @@ raises an uncaught exception.  Keys are no longer echoed to the screen when
 you type them, for example, which makes using the shell difficult.
 
 In Python you can avoid these complications and make debugging much easier by
-importing the :func:`curses.wrapper` function.  It takes a callable and does
-the initializations described above, also initializing colors if color support
-is present.  It then runs your provided callable and finally deinitializes
-appropriately.  The callable is called inside a try-catch clause which catches
-exceptions, performs curses deinitialization, and then passes the exception
-upwards.  Thus, your terminal won't be left in a funny state on exception.
+importing the module :mod:`curses.wrapper`.  It supplies a :func:`wrapper`
+function that takes a callable.  It does the initializations described above,
+and also initializes colors if color support is present.  It then runs your
+provided callable and finally deinitializes appropriately.  The callable is
+called inside a try-catch clause which catches exceptions, performs curses
+deinitialization, and then passes the exception upwards.  Thus, your terminal
+won't be left in a funny state on exception.
 
 
 Windows and Pads
@@ -143,8 +144,8 @@ window, but you might wish to divide the screen into smaller windows, in order
 to redraw or clear them separately. The :func:`newwin` function creates a new
 window of a given size, returning the new window object. ::
 
-   begin_x = 20; begin_y = 7
-   height = 5; width = 40
+   begin_x = 20 ; begin_y = 7
+   height = 5 ; width = 40
    win = curses.newwin(height, width, begin_y, begin_x)
 
 A word about the coordinate system used in curses: coordinates are always passed
@@ -183,13 +184,11 @@ displayed.   ::
    # explained in the next section
    for y in range(0, 100):
        for x in range(0, 100):
-           try:
-               pad.addch(y,x, ord('a') + (x*x+y*y) % 26)
-           except curses.error:
-               pass
+           try: pad.addch(y,x, ord('a') + (x*x+y*y) % 26 )
+           except curses.error: pass
 
    #  Displays a section of the pad in the middle of the screen
-   pad.refresh(0,0, 5,5, 20,75)
+   pad.refresh( 0,0, 5,5, 20,75)
 
 The :func:`refresh` call displays a section of the pad in the rectangle
 extending from coordinate (5,5) to coordinate (20,75) on the screen; the upper
@@ -322,7 +321,7 @@ again, such combinations are not guaranteed to work on all terminals.
 
 An example, which displays a line of text using color pair 1::
 
-   stdscr.addstr("Pretty text", curses.color_pair(1))
+   stdscr.addstr( "Pretty text", curses.color_pair(1) )
    stdscr.refresh()
 
 As I said before, a color pair consists of a foreground and background color.
@@ -344,7 +343,7 @@ When you change a color pair, any text already displayed using that color pair
 will change to the new colors.  You can also display new text in this color
 with::
 
-   stdscr.addstr(0,0, "RED ALERT!", curses.color_pair(1))
+   stdscr.addstr(0,0, "RED ALERT!", curses.color_pair(1) )
 
 Very fancy terminals can change the definitions of the actual colors to a given
 RGB value.  This lets you change color 1, which is usually red, to purple or
@@ -380,14 +379,11 @@ value returned to constants such as :const:`curses.KEY_PPAGE`,
 :const:`curses.KEY_HOME`, or :const:`curses.KEY_LEFT`.  Usually the main loop of
 your program will look something like this::
 
-   while 1:
+   while True:
        c = stdscr.getch()
-       if c == ord('p'):
-           PrintDocument()
-       elif c == ord('q'):
-           break  # Exit the while()
-       elif c == curses.KEY_HOME:
-           x = y = 0
+       if c == ord('p'): PrintDocument()
+       elif c == ord('q'): break  # Exit the while()
+       elif c == curses.KEY_HOME: x = y = 0
 
 The :mod:`curses.ascii` module supplies ASCII class membership functions that
 take either integer or 1-character-string arguments; these may be useful in
@@ -437,3 +433,4 @@ If you write an interesting little program, feel free to contribute it as
 another demo.  We can always use more of them!
 
 The ncurses FAQ: http://invisible-island.net/ncurses/ncurses.faq.html
+

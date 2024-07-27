@@ -20,48 +20,66 @@
 #endif
 #endif
 
+/* on unix, SVNVERSION is passed on the command line.
+ * on Windows, the string is interpolated using
+ * subwcrev.exe
+ */
+#ifndef SVNVERSION
+#define SVNVERSION "$WCRANGE$$WCMODS?M:$"
+#endif
+
 /* XXX Only unix build process has been tested */
-#ifndef GITVERSION
-#define GITVERSION ""
+#ifndef HGVERSION
+#define HGVERSION ""
 #endif
-#ifndef GITTAG
-#define GITTAG ""
+#ifndef HGTAG
+#define HGTAG ""
 #endif
-#ifndef GITBRANCH
-#define GITBRANCH ""
+#ifndef HGBRANCH
+#define HGBRANCH ""
 #endif
 
 const char *
 Py_GetBuildInfo(void)
 {
-    static char buildinfo[50 + sizeof(GITVERSION) +
-                          ((sizeof(GITTAG) > sizeof(GITBRANCH)) ?
-                           sizeof(GITTAG) : sizeof(GITBRANCH))];
-    const char *revision = _Py_gitversion();
+    static char buildinfo[50 + sizeof(HGVERSION) +
+                          ((sizeof(HGTAG) > sizeof(HGBRANCH)) ?
+                           sizeof(HGTAG) : sizeof(HGBRANCH))];
+    const char *revision = _Py_hgversion();
     const char *sep = *revision ? ":" : "";
-    const char *gitid = _Py_gitidentifier();
-    if (!(*gitid))
-        gitid = "default";
+    const char *hgid = _Py_hgidentifier();
+    if (!(*hgid))
+        hgid = "default";
     PyOS_snprintf(buildinfo, sizeof(buildinfo),
-                  "%s%s%s, %.20s, %.9s", gitid, sep, revision,
+                  "%s%s%s, %.20s, %.9s", hgid, sep, revision,
                   DATE, TIME);
     return buildinfo;
 }
 
 const char *
-_Py_gitversion(void)
+_Py_svnversion(void)
 {
-    return GITVERSION;
+    /* the following string can be modified by subwcrev.exe */
+    static const char svnversion[] = SVNVERSION;
+    if (svnversion[0] != '$')
+        return svnversion; /* it was interpolated, or passed on command line */
+    return "Unversioned directory";
 }
 
 const char *
-_Py_gitidentifier(void)
+_Py_hgversion(void)
 {
-    const char *gittag, *gitid;
-    gittag = GITTAG;
-    if ((*gittag) && strcmp(gittag, "undefined") != 0)
-        gitid = gittag;
+    return HGVERSION;
+}
+
+const char *
+_Py_hgidentifier(void)
+{
+    const char *hgtag, *hgid;
+    hgtag = HGTAG;
+    if ((*hgtag) && strcmp(hgtag, "tip") != 0)
+        hgid = hgtag;
     else
-        gitid = GITBRANCH;
-    return gitid;
+        hgid = HGBRANCH;
+    return hgid;
 }

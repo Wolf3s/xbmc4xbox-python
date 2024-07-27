@@ -39,9 +39,6 @@ directory rather than a file.  No item is added to ``sys.path`` more than
 once.  Blank lines and lines beginning with ``#`` are skipped.  Lines starting
 with ``import`` (followed by space or tab) are executed.
 
-.. versionchanged:: 2.6
-   A space or tab is now required after the import keyword.
-
 .. index::
    single: package
    triple: path; configuration; file
@@ -83,11 +80,7 @@ After these path manipulations, an attempt is made to import a module named
 :mod:`sitecustomize`, which can perform arbitrary site-specific customizations.
 It is typically created by a system administrator in the site-packages
 directory.  If this import fails with an :exc:`ImportError` exception, it is
-silently ignored.  If Python is started without output streams available, as
-with :file:`pythonw.exe` on Windows (which is used by default to start IDLE),
-attempted output from :mod:`sitecustomize` is ignored. Any exception other
-than :exc:`ImportError` causes a silent and perhaps mysterious failure of the
-process.
+silently ignored.
 
 .. index:: module: usercustomize
 
@@ -106,8 +99,6 @@ empty, and the path manipulations are skipped; however the import of
 
    A list of prefixes for site-packages directories.
 
-   .. versionadded:: 2.6
-
 
 .. data:: ENABLE_USER_SITE
 
@@ -117,8 +108,6 @@ empty, and the path manipulations are skipped; however the import of
    :envvar:`PYTHONNOUSERSITE`).  ``None`` means it was disabled for security
    reasons (mismatch between user or group id and effective id) or by an
    administrator.
-
-   .. versionadded:: 2.6
 
 
 .. data:: USER_SITE
@@ -130,8 +119,6 @@ empty, and the path manipulations are skipped; however the import of
    framework builds, and :file:`{%APPDATA%}\\Python\\Python{XY}\\site-packages`
    on Windows.  This directory is a site directory, which means that
    :file:`.pth` files in it will be processed.
-
-   .. versionadded:: 2.6
 
 
 .. data:: USER_BASE
@@ -145,8 +132,6 @@ empty, and the path manipulations are skipped; however the import of
    etc. for the :ref:`user installation scheme <inst-alt-install-user>`.  See
    also :envvar:`PYTHONUSERBASE`.
 
-   .. versionadded:: 2.6
-
 
 .. function:: addsitedir(sitedir, known_paths=None)
 
@@ -159,7 +144,7 @@ empty, and the path manipulations are skipped; however the import of
    Return a list containing all global site-packages directories (and possibly
    site-python).
 
-   .. versionadded:: 2.7
+   .. versionadded:: 3.2
 
 
 .. function:: getuserbase()
@@ -168,7 +153,7 @@ empty, and the path manipulations are skipped; however the import of
    initialized yet, this function will also set it, respecting
    :envvar:`PYTHONUSERBASE`.
 
-   .. versionadded:: 2.7
+   .. versionadded:: 3.2
 
 
 .. function:: getusersitepackages()
@@ -177,7 +162,7 @@ empty, and the path manipulations are skipped; however the import of
    :data:`USER_SITE`.  If it is not initialized yet, this function will also set
    it, respecting :envvar:`PYTHONNOUSERSITE` and :data:`USER_BASE`.
 
-   .. versionadded:: 2.7
+   .. versionadded:: 3.2
 
 
 The :mod:`site` module also provides a way to get the user directories from the
@@ -185,8 +170,8 @@ command line:
 
 .. code-block:: sh
 
-   $ python -m site --user-site
-   /home/user/.local/lib/python2.7/site-packages
+   $ python3 -m site --user-site
+   /home/user/.local/lib/python3.3/site-packages
 
 .. program:: site
 
@@ -206,7 +191,7 @@ If it is called without arguments, it will print the contents of
 If both options are given, user base and user site will be printed (always in
 this order), separated by :data:`os.pathsep`.
 
-If any option is given, the script will exit with one of these values: ``0`` if
+If any option is given, the script will exit with one of these values: ``O`` if
 the user site-packages directory is enabled, ``1`` if it was disabled by the
 user, ``2`` if it is disabled for security reasons or by an administrator, and a
 value greater than 2 if there is an error.

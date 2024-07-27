@@ -10,10 +10,12 @@ PyAPI_DATA(PyTypeObject) PyMemoryView_Type;
 
 #define PyMemoryView_Check(op) (Py_TYPE(op) == &PyMemoryView_Type)
 
+#ifndef Py_LIMITED_API
 /* Get a pointer to the underlying Py_buffer of a memoryview object. */
 #define PyMemoryView_GET_BUFFER(op) (&((PyMemoryViewObject *)(op))->view)
 /* Get a pointer to the PyObject from which originates a memoryview object. */
 #define PyMemoryView_GET_BASE(op) (((PyMemoryViewObject *)(op))->view.obj)
+#endif
 
 
 PyAPI_FUNC(PyObject *) PyMemoryView_GetContiguous(PyObject *base, 
@@ -33,7 +35,7 @@ PyAPI_FUNC(PyObject *) PyMemoryView_GetContiguous(PyObject *base,
        original buffer if a copy must be made.  If buffertype is
        PyBUF_WRITE and the buffer is not contiguous an error will
        be raised.  In this circumstance, the user can use
-       PyBUF_SHADOW to ensure that a writable temporary
+       PyBUF_SHADOW to ensure that a a writable temporary
        contiguous buffer is returned.  The contents of this
        contiguous buffer will be copied back into the original
        object after the memoryview object is deleted as long as
@@ -53,20 +55,22 @@ PyAPI_FUNC(PyObject *) PyMemoryView_GetContiguous(PyObject *base,
 
 PyAPI_FUNC(PyObject *) PyMemoryView_FromObject(PyObject *base);
 
+#ifndef Py_LIMITED_API
 PyAPI_FUNC(PyObject *) PyMemoryView_FromBuffer(Py_buffer *info);
     /* create new if bufptr is NULL 
         will be a new bytesobject in base */
+#endif
 
 
 /* The struct is declared here so that macros can work, but it shouldn't
    be considered public. Don't access those fields directly, use the macros
    and functions instead! */
+#ifndef Py_LIMITED_API
 typedef struct {
     PyObject_HEAD
-    PyObject *base;
     Py_buffer view;
 } PyMemoryViewObject;
-
+#endif
 
 #ifdef __cplusplus
 }

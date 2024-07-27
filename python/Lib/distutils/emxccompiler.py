@@ -19,8 +19,6 @@ handles the EMX port of the GNU C compiler to OS/2.
 #
 # * EMX gcc 2.81/EMX 0.9d fix03
 
-__revision__ = "$Id$"
-
 import os,sys,copy
 from distutils.ccompiler import gen_preprocess_options, gen_lib_options
 from distutils.unixccompiler import UnixCCompiler
@@ -79,14 +77,14 @@ class EMXCCompiler (UnixCCompiler):
             # gcc requires '.rc' compiled to binary ('.res') files !!!
             try:
                 self.spawn(["rc", "-r", src])
-            except DistutilsExecError, msg:
-                raise CompileError, msg
+            except DistutilsExecError as msg:
+                raise CompileError(msg)
         else: # for other files use the C-compiler
             try:
                 self.spawn(self.compiler_so + cc_args + [src, '-o', obj] +
                            extra_postargs)
-            except DistutilsExecError, msg:
-                raise CompileError, msg
+            except DistutilsExecError as msg:
+                raise CompileError(msg)
 
     def link (self,
               target_desc,
@@ -189,9 +187,8 @@ class EMXCCompiler (UnixCCompiler):
             # use normcase to make sure '.rc' is really '.rc' and not '.RC'
             (base, ext) = os.path.splitext (os.path.normcase(src_name))
             if ext not in (self.src_extensions + ['.rc']):
-                raise UnknownFileError, \
-                      "unknown file type '%s' (from '%s')" % \
-                      (ext, src_name)
+                raise UnknownFileError("unknown file type '%s' (from '%s')" % \
+                      (ext, src_name))
             if strip_dir:
                 base = os.path.basename (base)
             if ext == '.rc':
@@ -261,10 +258,9 @@ def check_config_h():
     # "pyconfig.h" check -- should probably be renamed...
 
     from distutils import sysconfig
-    import string
     # if sys.version contains GCC then python was compiled with
     # GCC, and the pyconfig.h file should be OK
-    if string.find(sys.version,"GCC") >= 0:
+    if sys.version.find("GCC") >= 0:
         return (CONFIG_H_OK, "sys.version mentions 'GCC'")
 
     fn = sysconfig.get_config_h_filename()
@@ -277,7 +273,7 @@ def check_config_h():
         finally:
             f.close()
 
-    except IOError, exc:
+    except IOError as exc:
         # if we can't read this file, we cannot say it is wrong
         # the compiler will complain later about this file as missing
         return (CONFIG_H_UNCERTAIN,
@@ -285,7 +281,7 @@ def check_config_h():
 
     else:
         # "pyconfig.h" contains an "#ifdef __GNUC__" or something similar
-        if string.find(s,"__GNUC__") >= 0:
+        if s.find("__GNUC__") >= 0:
             return (CONFIG_H_OK, "'%s' mentions '__GNUC__'" % fn)
         else:
             return (CONFIG_H_NOTOK, "'%s' does not mention '__GNUC__'" % fn)
@@ -306,7 +302,7 @@ def get_versions():
             out_string = out.read()
         finally:
             out.close()
-        result = re.search('(\d+\.\d+\.\d+)',out_string)
+        result = re.search('(\d+\.\d+\.\d+)', out_string, re.ASCII)
         if result:
             gcc_version = StrictVersion(result.group(1))
         else:

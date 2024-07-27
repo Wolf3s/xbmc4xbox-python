@@ -29,10 +29,6 @@ static PyThread_type_lock _PyOS_ReadlineLock = NULL;
 
 int (*PyOS_InputHook)(void) = NULL;
 
-#ifdef RISCOS
-int Py_RISCOSWimpFlag;
-#endif
-
 /* This function restarts a fgets() after an EINTR error occurred
    except if PyOS_InterruptOccurred() returns true. */
 
@@ -40,6 +36,7 @@ static int
 my_fgets(char *buf, int len, FILE *fp)
 {
     char *p;
+    int err;
 #ifdef MS_WINDOWS
     int i;
 #endif
@@ -49,9 +46,13 @@ my_fgets(char *buf, int len, FILE *fp)
             (void)(PyOS_InputHook)();
         errno = 0;
         clearerr(fp);
-        p = fgets(buf, len, fp);
+        if (_PyVerify_fd(fileno(fp)))
+            p = fgets(buf, len, fp);
+        else
+            p = NULL;
         if (p != NULL)
             return 0; /* No error */
+        err = errno;
 #ifdef MS_WINDOWS
         /* Ctrl-C anywhere on the line or Ctrl-Z if the only character
            on a line will set ERROR_OPERATION_ABORTED. Under normal
@@ -69,7 +70,7 @@ my_fgets(char *buf, int len, FILE *fp)
             for (i = 0; i < 10; i++) {
                 if (PyOS_InterruptOccurred())
                     return 1;
-                Sleep(1);
+            Sleep(1);
             }
         }
 #endif /* MS_WINDOWS */
@@ -78,7 +79,7 @@ my_fgets(char *buf, int len, FILE *fp)
             return -1; /* EOF */
         }
 #ifdef EINTR
-        if (errno == EINTR) {
+        if (err == EINTR) {
             int s;
 #ifdef WITH_THREAD
             PyEval_RestoreThread(_PyOS_ReadlineTState);
@@ -108,22 +109,13 @@ char *
 PyOS_StdioReadline(FILE *sys_stdin, FILE *sys_stdout, char *prompt)
 {
     size_t n;
-    char *p, *pr;
+    char *p;
     n = 100;
     if ((p = (char *)PyMem_MALLOC(n)) == NULL)
         return NULL;
     fflush(sys_stdout);
-#ifndef RISCOS
     if (prompt)
         fprintf(stderr, "%s", prompt);
-#else
-    if (prompt) {
-        if(Py_RISCOSWimpFlag)
-            fprintf(stderr, "\x0cr%s\x0c", prompt);
-        else
-            fprintf(stderr, "%s", prompt);
-    }
-#endif
     fflush(stderr);
     switch (my_fgets(p, (int)n, sys_stdin)) {
     case 0: /* Normal case */
@@ -140,29 +132,17 @@ PyOS_StdioReadline(FILE *sys_stdin, FILE *sys_stdout, char *prompt)
     n = strlen(p);
     while (n > 0 && p[n-1] != '\n') {
         size_t incr = n+2;
+        p = (char *)PyMem_REALLOC(p, n + incr);
+        if (p == NULL)
+            return NULL;
         if (incr > INT_MAX) {
-            PyMem_FREE(p);
             PyErr_SetString(PyExc_OverflowError, "input line too long");
-            return NULL;
         }
-        pr = (char *)PyMem_REALLOC(p, n + incr);
-        if (pr == NULL) {
-            PyMem_FREE(p);
-            PyErr_NoMemory();
-            return NULL;
-        }
-        p = pr;
         if (my_fgets(p+n, (int)incr, sys_stdin) != 0)
             break;
         n += strlen(p+n);
     }
-    pr = (char *)PyMem_REALLOC(p, n+1);
-    if (pr == NULL) {
-        PyMem_FREE(p);
-        PyErr_NoMemory();
-        return NULL;
-    }
-    return pr;
+    return (char *)PyMem_REALLOC(p, n+1);
 }
 
 

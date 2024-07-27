@@ -17,10 +17,6 @@
    * :ref:`Advanced Tutorial <logging-advanced-tutorial>`
    * :ref:`Logging Cookbook <logging-cookbook>`
 
-**Source code:** :source:`Lib/logging/config.py`
-
---------------
-
 This section describes the API for configuring the logging module.
 
 .. _logging-config-api:
@@ -76,14 +72,13 @@ in :mod:`logging` itself) and defining handlers which are declared either in
     this new subclass, and then :func:`dictConfig` could be called exactly as
     in the default, uncustomized state.
 
-   .. versionadded:: 2.7
+   .. versionadded:: 3.2
 
 .. function:: fileConfig(fname, defaults=None, disable_existing_loggers=True)
 
    Reads the logging configuration from a :mod:`configparser`\-format file
-   named *fname*. The format of the file should be as described in
-   :ref:`logging-config-fileformat`. This function can be called several times
-   from an application, allowing an end user to select from various pre-canned
+   named *fname*. This function can be called several times from an
+   application, allowing an end user to select from various pre-canned
    configurations (if the developer provides a mechanism to present the choices
    and load the chosen configuration).
 
@@ -92,16 +87,13 @@ in :mod:`logging` itself) and defining handlers which are declared either in
 
    :param disable_existing_loggers: If specified as ``False``, loggers which
                                     exist when this call is made are left
-                                    enabled. The default is ``True`` because this
-                                    enables old behaviour in a
-                                    backward-compatible way. This behaviour is to
+                                    alone. The default is ``True`` because this
+                                    enables old behaviour in a backward-
+                                    compatible way. This behaviour is to
                                     disable any existing loggers unless they or
                                     their ancestors are explicitly named in the
                                     logging configuration.
 
-   .. versionchanged:: 2.6
-      The ``disable_existing_loggers`` keyword argument was added. Previously,
-      existing loggers were *always* disabled.
 
 .. function:: listen(port=DEFAULT_LOGGING_CONFIG_PORT)
 
@@ -109,18 +101,15 @@ in :mod:`logging` itself) and defining handlers which are declared either in
    configurations. If no port is specified, the module's default
    :const:`DEFAULT_LOGGING_CONFIG_PORT` is used. Logging configurations will be
    sent as a file suitable for processing by :func:`fileConfig`. Returns a
-   :class:`~threading.Thread` instance on which you can call
-   :meth:`~threading.Thread.start` to start the server, and which you can
-   :meth:`~threading.Thread.join` when appropriate. To stop the server,
+   :class:`Thread` instance on which you can call :meth:`start` to start the
+   server, and which you can :meth:`join` when appropriate. To stop the server,
    call :func:`stopListening`.
 
    To send a configuration to the socket, read in the configuration file and
    send it to the socket as a string of bytes preceded by a four-byte length
    string packed in binary using ``struct.pack('>L', n)``.
 
-   .. note::
-
-      Because portions of the configuration are passed through
+   .. note:: Because portions of the configuration are passed through
       :func:`eval`, use of this function may open its users to a security risk.
       While the function only binds to a socket on ``localhost``, and so does
       not accept connections from remote machines, there are scenarios where
@@ -177,11 +166,11 @@ otherwise, the context is used to determine what to instantiate.
 
 * *formatters* - the corresponding value will be a dict in which each
   key is a formatter id and each value is a dict describing how to
-  configure the corresponding :class:`~logging.Formatter` instance.
+  configure the corresponding Formatter instance.
 
   The configuring dict is searched for keys ``format`` and ``datefmt``
   (with defaults of ``None``) and these are used to construct a
-  :class:`~logging.Formatter` instance.
+  :class:`logging.Formatter` instance.
 
 * *filters* - the corresponding value will be a dict in which each key
   is a filter id and each value is a dict describing how to configure
@@ -209,9 +198,7 @@ otherwise, the context is used to determine what to instantiate.
     handler.
 
   All *other* keys are passed through as keyword arguments to the
-  handler's constructor.  For example, given the snippet:
-
-  .. code-block:: yaml
+  handler's constructor.  For example, given the snippet::
 
       handlers:
         console:
@@ -320,9 +307,7 @@ it unambiguously, and then using the id in the source object's
 configuration to indicate that a connection exists between the source
 and the destination object with that id.
 
-So, for example, consider the following YAML snippet:
-
-.. code-block:: yaml
+So, for example, consider the following YAML snippet::
 
     formatters:
       brief:
@@ -379,9 +364,7 @@ to provide a 'factory' - a callable which is called with a
 configuration dictionary and which returns the instantiated object.
 This is signalled by an absolute import path to the factory being
 made available under the special key ``'()'``.  Here's a concrete
-example:
-
-.. code-block:: yaml
+example::
 
     formatters:
       brief:
@@ -586,21 +569,7 @@ called ``form01`` in the ``[formatters]`` section will have its configuration
 specified in a section called ``[formatter_form01]``. The root logger
 configuration must be specified in a section called ``[logger_root]``.
 
-.. note::
-
-   The :func:`fileConfig` API is older than the :func:`dictConfig` API and does
-   not provide functionality to cover certain aspects of logging. For example,
-   you cannot configure :class:`~logging.Filter` objects, which provide for
-   filtering of messages beyond simple integer levels, using :func:`fileConfig`.
-   If you need to have instances of :class:`~logging.Filter` in your logging
-   configuration, you will need to use :func:`dictConfig`. Note that future
-   enhancements to configuration functionality will be added to
-   :func:`dictConfig`, so it's worth considering transitioning to this newer
-   API when it's convenient to do so.
-
-Examples of these sections in the file are given below.
-
-.. code-block:: ini
+Examples of these sections in the file are given below. ::
 
    [loggers]
    keys=root,log02,log03,log04,log05,log06,log07
@@ -612,9 +581,7 @@ Examples of these sections in the file are given below.
    keys=form01,form02,form03,form04,form05,form06,form07,form08,form09
 
 The root logger must specify a level and a list of handlers. An example of a
-root logger section is given below.
-
-.. code-block:: ini
+root logger section is given below. ::
 
    [logger_root]
    level=NOTSET
@@ -631,9 +598,7 @@ appear in the ``[handlers]`` section. These names must appear in the
 file.
 
 For loggers other than the root logger, some additional information is required.
-This is illustrated by the following example.
-
-.. code-block:: ini
+This is illustrated by the following example. ::
 
    [logger_parser]
    level=DEBUG
@@ -651,8 +616,7 @@ indicate that messages are **not** propagated to handlers up the hierarchy. The
 say the name used by the application to get the logger.
 
 Sections which specify handler configuration are exemplified by the following.
-
-.. code-block:: ini
+::
 
    [handler_hand01]
    class=StreamHandler
@@ -664,10 +628,6 @@ The ``class`` entry indicates the handler's class (as determined by :func:`eval`
 in the ``logging`` package's namespace). The ``level`` is interpreted as for
 loggers, and ``NOTSET`` is taken to mean 'log everything'.
 
-.. versionchanged:: 2.6
-   Added support for resolving the handler’s class as a dotted module and
-   class name.
-
 The ``formatter`` entry indicates the key name of the formatter for this
 handler. If blank, a default formatter (``logging._defaultFormatter``) is used.
 If a name is specified, it must appear in the ``[formatters]`` section and have
@@ -676,9 +636,7 @@ a corresponding section in the configuration file.
 The ``args`` entry, when :func:`eval`\ uated in the context of the ``logging``
 package's namespace, is the list of arguments to the constructor for the handler
 class. Refer to the constructors for the relevant handlers, or to the examples
-below, to see how typical entries are constructed.
-
-.. code-block:: ini
+below, to see how typical entries are constructed. ::
 
    [handler_hand02]
    class=FileHandler
@@ -729,9 +687,7 @@ below, to see how typical entries are constructed.
    formatter=form09
    args=('localhost:9022', '/log', 'GET')
 
-Sections which specify formatter configuration are typified by the following.
-
-.. code-block:: ini
+Sections which specify formatter configuration are typified by the following. ::
 
    [formatter_form01]
    format=F1 %(asctime)s %(levelname)s %(message)s
@@ -748,13 +704,10 @@ format string, with a comma separator.  An example time in ISO8601 format is
 
 The ``class`` entry is optional.  It indicates the name of the formatter's class
 (as a dotted module and class name.)  This option is useful for instantiating a
-:class:`~logging.Formatter` subclass.  Subclasses of
-:class:`~logging.Formatter` can present exception tracebacks in an expanded or
-condensed format.
+:class:`Formatter` subclass.  Subclasses of :class:`Formatter` can present
+exception tracebacks in an expanded or condensed format.
 
-.. note::
-
-   Due to the use of :func:`eval` as described above, there are
+.. note:: Due to the use of :func:`eval` as described above, there are
    potential security risks which result from using the :func:`listen` to send
    and receive configurations via sockets. The risks are limited to where
    multiple users with no mutual trust run code on the same machine; see the
@@ -767,3 +720,5 @@ condensed format.
 
    Module :mod:`logging.handlers`
       Useful handlers included with the logging module.
+
+

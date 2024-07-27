@@ -2,7 +2,7 @@
 
 /* ------------------------------------------------------------------
    The code in this module was based on a download from:
-      http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/MT2002/emt19937ar.html
+      http://www.math.keio.ac.jp/~matumoto/MT2002/emt19937ar.html
 
    It was modified in 2002 by Raymond Hettinger as follows:
 
@@ -60,8 +60,8 @@
 
 
    Any feedback is very welcome.
-   http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/emt.html
-   email: m-mat @ math.sci.hiroshima-u.ac.jp (remove space)
+   http://www.math.keio.ac.jp/matumoto/emt.html
+   email: matumoto@math.keio.ac.jp
 */
 
 /* ---------------------------------------------------------------*/
@@ -230,15 +230,9 @@ random_seed(RandomObject *self, PyObject *args)
     }
     /* If the arg is an int or long, use its absolute value; else use
      * the absolute value of its hash code.
-     * Calling int.__abs__() or long.__abs__() prevents calling arg.__abs__(),
-     * which might return an invalid value. See issue #31478.
      */
-    if (PyInt_Check(arg)) {
-        n = PyInt_Type.tp_as_number->nb_absolute(arg);
-    }
-    else if (PyLong_Check(arg)) {
-        n = PyLong_Type.tp_as_number->nb_absolute(arg);
-    }
+    if (PyLong_Check(arg))
+        n = PyNumber_Absolute(arg);
     else {
         long hash = PyObject_Hash(arg);
         if (hash == -1)
@@ -265,7 +259,7 @@ random_seed(RandomObject *self, PyObject *args)
     masklower = PyLong_FromUnsignedLong(0xffffffffU);
     if (masklower == NULL)
         goto Done;
-    thirtytwo = PyInt_FromLong(32L);
+    thirtytwo = PyLong_FromLong(32L);
     if (thirtytwo == NULL)
         goto Done;
     while ((err=PyObject_IsTrue(n))) {
@@ -347,7 +341,6 @@ random_setstate(RandomObject *self, PyObject *state)
     int i;
     unsigned long element;
     long index;
-    unsigned long new_state[N];
 
     if (!PyTuple_Check(state)) {
         PyErr_SetString(PyExc_TypeError,
@@ -364,101 +357,14 @@ random_setstate(RandomObject *self, PyObject *state)
         element = PyLong_AsUnsignedLong(PyTuple_GET_ITEM(state, i));
         if (element == (unsigned long)-1 && PyErr_Occurred())
             return NULL;
-        new_state[i] = element & 0xffffffffUL; /* Make sure we get sane state */
+        self->state[i] = element & 0xffffffffUL; /* Make sure we get sane state */
     }
 
     index = PyLong_AsLong(PyTuple_GET_ITEM(state, i));
     if (index == -1 && PyErr_Occurred())
         return NULL;
-    if (index < 0 || index > N) {
-        PyErr_SetString(PyExc_ValueError, "invalid state");
-        return NULL;
-    }
     self->index = (int)index;
-    for (i = 0; i < N; i++)
-        self->state[i] = new_state[i];
 
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
-/*
-Jumpahead should be a fast way advance the generator n-steps ahead, but
-lacking a formula for that, the next best is to use n and the existing
-state to create a new state far away from the original.
-
-The generator uses constant spaced additive feedback, so shuffling the
-state elements ought to produce a state which would not be encountered
-(in the near term) by calls to random().  Shuffling is normally
-implemented by swapping the ith element with another element ranging
-from 0 to i inclusive.  That allows the element to have the possibility
-of not being moved.  Since the goal is to produce a new, different
-state, the swap element is ranged from 0 to i-1 inclusive.  This assures
-that each element gets moved at least once.
-
-To make sure that consecutive calls to jumpahead(n) produce different
-states (even in the rare case of involutory shuffles), i+1 is added to
-each element at position i.  Successive calls are then guaranteed to
-have changing (growing) values as well as shuffled positions.
-
-Finally, the self->index value is set to N so that the generator itself
-kicks in on the next call to random().  This assures that all results
-have been through the generator and do not just reflect alterations to
-the underlying state.
-*/
-
-static PyObject *
-random_jumpahead(RandomObject *self, PyObject *n)
-{
-    long i, j;
-    PyObject *iobj;
-    PyObject *remobj;
-    unsigned long *mt, tmp, nonzero;
-
-    if (!_PyAnyInt_Check(n)) {
-        PyErr_Format(PyExc_TypeError, "jumpahead requires an "
-                     "integer, not '%s'",
-                     Py_TYPE(n)->tp_name);
-        return NULL;
-    }
-
-    mt = self->state;
-    for (i = N-1; i > 1; i--) {
-        iobj = PyInt_FromLong(i);
-        if (iobj == NULL)
-            return NULL;
-        remobj = PyNumber_Remainder(n, iobj);
-        Py_DECREF(iobj);
-        if (remobj == NULL)
-            return NULL;
-        j = PyInt_AsLong(remobj);
-        Py_DECREF(remobj);
-        if (j == -1L && PyErr_Occurred())
-            return NULL;
-        tmp = mt[i];
-        mt[i] = mt[j];
-        mt[j] = tmp;
-    }
-
-    nonzero = 0;
-    for (i = 1; i < N; i++) {
-        mt[i] += i+1;
-        mt[i] &= 0xffffffffUL; /* for WORDSIZE > 32 machines */
-        nonzero |= mt[i];
-    }
-
-    /* Ensure the state is nonzero: in the unlikely event that mt[1] through
-       mt[N-1] are all zero, set the MSB of mt[0] (see issue #14591). In the
-       normal case, we fall back to the pre-issue 14591 behaviour for mt[0]. */
-    if (nonzero) {
-        mt[0] += 1;
-        mt[0] &= 0xffffffffUL; /* for WORDSIZE > 32 machines */
-    }
-    else {
-        mt[0] = 0x80000000UL;
-    }
-
-    self->index = N;
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -534,9 +440,6 @@ static PyMethodDef random_methods[] = {
         PyDoc_STR("getstate() -> tuple containing the current state.")},
     {"setstate",          (PyCFunction)random_setstate,  METH_O,
         PyDoc_STR("setstate(state) -> None.  Restores generator state.")},
-    {"jumpahead",       (PyCFunction)random_jumpahead,  METH_O,
-        PyDoc_STR("jumpahead(int) -> None.  Create new state from "
-                  "existing state and integer.")},
     {"getrandbits",     (PyCFunction)random_getrandbits,  METH_VARARGS,
         PyDoc_STR("getrandbits(k) -> x.  Generates a long int with "
                   "k random bits.")},
@@ -556,7 +459,7 @@ static PyTypeObject Random_Type = {
     0,                                  /*tp_print*/
     0,                                  /*tp_getattr*/
     0,                                  /*tp_setattr*/
-    0,                                  /*tp_compare*/
+    0,                                  /*tp_reserved*/
     0,                                  /*tp_repr*/
     0,                                  /*tp_as_number*/
     0,                                  /*tp_as_sequence*/
@@ -586,23 +489,37 @@ static PyTypeObject Random_Type = {
     0,                                  /*tp_init*/
     0,                                  /*tp_alloc*/
     random_new,                         /*tp_new*/
-    _PyObject_Del,                      /*tp_free*/
+    PyObject_Free,                      /*tp_free*/
     0,                                  /*tp_is_gc*/
 };
 
 PyDoc_STRVAR(module_doc,
 "Module implements the Mersenne Twister random number generator.");
 
+
+static struct PyModuleDef _randommodule = {
+    PyModuleDef_HEAD_INIT,
+    "_random",
+    module_doc,
+    -1,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL
+};
+
 PyMODINIT_FUNC
-init_random(void)
+PyInit__random(void)
 {
     PyObject *m;
 
     if (PyType_Ready(&Random_Type) < 0)
-        return;
-    m = Py_InitModule3("_random", NULL, module_doc);
+        return NULL;
+    m = PyModule_Create(&_randommodule);
     if (m == NULL)
-        return;
+        return NULL;
     Py_INCREF(&Random_Type);
     PyModule_AddObject(m, "Random", (PyObject *)&Random_Type);
+    return m;
 }

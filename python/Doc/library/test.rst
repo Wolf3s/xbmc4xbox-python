@@ -1,4 +1,3 @@
-
 :mod:`test` --- Regression tests package for Python
 ===================================================
 
@@ -7,11 +6,11 @@
 .. sectionauthor:: Brett Cannon <brett@python.org>
 
 .. note::
-    The :mod:`test` package is meant for internal use by Python only. It is
-    documented for the benefit of the core developers of Python. Any use of
-    this package outside of Python's standard library is discouraged as code
-    mentioned here can change or be removed without notice between releases of
-    Python.
+   The :mod:`test` package is meant for internal use by Python only. It is
+   documented for the benefit of the core developers of Python. Any use of
+   this package outside of Python's standard library is discouraged as code
+   mentioned here can change or be removed without notice between releases of
+   Python.
 
 
 The :mod:`test` package contains all regression tests for Python as well as the
@@ -83,9 +82,9 @@ A basic boilerplate is often used::
 
    def test_main():
        support.run_unittest(MyTestCase1,
-                            MyTestCase2,
-                            ... list other tests ...
-                            )
+                                 MyTestCase2,
+                                 ... list other tests ...
+                                )
 
    if __name__ == '__main__':
        test_main()
@@ -158,55 +157,53 @@ guidelines to be followed:
 Running tests using the command-line interface
 ----------------------------------------------
 
-The :mod:`test.regrtest` module can be run as a script to drive Python's regression
-test suite, thanks to the :option:`-m` option: :program:`python -m test.regrtest`.
+The :mod:`test` package can be run as a script to drive Python's regression
+test suite, thanks to the :option:`-m` option: :program:`python -m test`. Under
+the hood, it uses :mod:`test.regrtest`; the call :program:`python -m
+test.regrtest` used in previous Python versions still works).
 Running the script by itself automatically starts running all regression
 tests in the :mod:`test` package. It does this by finding all modules in the
 package whose name starts with ``test_``, importing them, and executing the
 function :func:`test_main` if present. The names of tests to execute may also
 be passed to the script. Specifying a single regression test (:program:`python
--m test.regrtest test_spam`) will minimize output and only print whether
-the test passed or failed and thus minimize output.
+-m test test_spam`) will minimize output and only print
+whether the test passed or failed and thus minimize output.
 
-Running :mod:`test.regrtest` directly allows what resources are available for
+Running :mod:`test` directly allows what resources are available for
 tests to use to be set. You do this by using the ``-u`` command-line
 option. Specifying ``all`` as the value for the ``-u`` option enables all
-possible resources: :program:`python -m test.regrtest -uall`.
+possible resources: :program:`python -m test -uall`.
 If all but one resource is desired (a more common case), a
 comma-separated list of resources that are not desired may be listed after
-``all``. The command :program:`python -m test.regrtest -uall,-audio,-largefile`
-will run :mod:`test.regrtest` with all resources except the ``audio`` and
+``all``. The command :program:`python -m test -uall,-audio,-largefile`
+will run :mod:`test` with all resources except the ``audio`` and
 ``largefile`` resources. For a list of all resources and more command-line
-options, run :program:`python -m test.regrtest -h`.
+options, run :program:`python -m test -h`.
 
 Some other ways to execute the regression tests depend on what platform the
 tests are being executed on. On Unix, you can run :program:`make test` at the
-top-level directory where Python was built. On Windows, executing
-:program:`rt.bat` from your :file:`PCBuild` directory will run all regression
-tests.
-
-.. versionchanged:: 2.7.14
-   The :mod:`test` package can be run as a script: :program:`python -m test`.
-   This works the same as running the :mod:`test.regrtest` module.
+top-level directory where Python was built. On Windows,
+executing :program:`rt.bat` from your :file:`PCBuild` directory will run all
+regression tests.
 
 
-:mod:`test.support` --- Utility functions for tests
-===================================================
+:mod:`test.support` --- Utilities for the Python test suite
+===========================================================
 
 .. module:: test.support
-   :synopsis: Support for Python regression tests.
+   :synopsis: Support for Python's regression test suite.
 
-.. note::
-
-   The :mod:`test.test_support` module has been renamed to :mod:`test.support`
-   in Python 3.x and 2.7.14.  The name ``test.test_support`` has been retained
-   as an alias in 2.7.
 
 The :mod:`test.support` module provides support for Python's regression
-tests.
+test suite.
+
+.. note::
+   :mod:`test.support` is not a public module.  It is documented here to help
+   Python developers write tests.  The API of this module is subject to change
+   without backwards compatibility concerns between releases.
+
 
 This module defines the following exceptions:
-
 
 .. exception:: TestFailed
 
@@ -221,19 +218,14 @@ This module defines the following exceptions:
    network connection) is not available. Raised by the :func:`requires`
    function.
 
-The :mod:`test.support` module defines the following constants:
 
+The :mod:`test.support` module defines the following constants:
 
 .. data:: verbose
 
    :const:`True` when verbose output is enabled. Should be checked when more
    detailed information is desired about a running test. *verbose* is set by
    :mod:`test.regrtest`.
-
-
-.. data:: have_unicode
-
-   :const:`True` when Unicode support is available.
 
 
 .. data:: is_jython
@@ -247,12 +239,7 @@ The :mod:`test.support` module defines the following constants:
    temporary file that is created should be closed and unlinked (removed).
 
 
-.. data:: TEST_HTTP_URL
-
-    Define the URL of a dedicated HTTP server for the network tests.
-
 The :mod:`test.support` module defines the following functions:
-
 
 .. function:: forget(module_name)
 
@@ -267,7 +254,7 @@ The :mod:`test.support` module defines the following functions:
    tests.
 
 
-.. function:: requires(resource[, msg])
+.. function:: requires(resource, msg=None)
 
    Raise :exc:`ResourceDenied` if *resource* is not available. *msg* is the
    argument to :exc:`ResourceDenied` if it is raised. Always returns
@@ -282,7 +269,7 @@ The :mod:`test.support` module defines the following functions:
    path to the file.
 
 
-.. function:: run_unittest(*classes)
+.. function:: run_unittest(\*classes)
 
    Execute :class:`unittest.TestCase` subclasses passed to the function. The
    function scans the classes for methods starting with the prefix ``test_``
@@ -299,7 +286,7 @@ The :mod:`test.support` module defines the following functions:
    This will run all tests defined in the named module.
 
 
-.. function:: check_warnings(*filters, quiet=True)
+.. function:: check_warnings(\*filters, quiet=True)
 
    A convenience wrapper for :func:`warnings.catch_warnings()` that makes it
    easier to test that a warning was correctly raised.  It is approximately
@@ -357,27 +344,12 @@ The :mod:`test.support` module defines the following functions:
           w.reset()
           assert len(w.warnings) == 0
 
+
    Here all warnings will be caught, and the test code tests the captured
    warnings directly.
 
-   .. versionadded:: 2.6
-   .. versionchanged:: 2.7
+   .. versionchanged:: 3.2
       New optional arguments *filters* and *quiet*.
-
-
-.. function:: check_py3k_warnings(*filters, quiet=False)
-
-   Similar to :func:`check_warnings`, but for Python 3 compatibility warnings.
-   If ``sys.py3kwarning == 1``, it checks if the warning is effectively raised.
-   If ``sys.py3kwarning == 0``, it checks that no warning is raised.  It
-   accepts 2-tuples of the form ``("message regexp", WarningCategory)`` as
-   positional arguments.  When the optional keyword argument *quiet* is
-   :const:`True`, it does not fail if a filter catches nothing.  Without
-   arguments, it defaults to::
-
-      check_py3k_warnings(("", DeprecationWarning), quiet=False)
-
-   .. versionadded:: 2.7
 
 
 .. function:: captured_stdout()
@@ -389,10 +361,15 @@ The :mod:`test.support` module defines the following functions:
    Example use::
 
       with captured_stdout() as s:
-          print "hello"
+          print("hello")
       assert s.getvalue() == "hello\n"
 
-   .. versionadded:: 2.6
+
+.. function:: suppress_crash_popup()
+
+   A context manager that disables Windows Error Reporting dialogs using
+   `SetErrorMode <http://msdn.microsoft.com/en-us/library/windows/desktop/ms680621%28v=vs.85%29.aspx>`_.
+   On other platforms it's a no-op.
 
 
 .. function:: import_module(name, deprecated=False)
@@ -404,7 +381,7 @@ The :mod:`test.support` module defines the following functions:
    Module and package deprecation messages are suppressed during this import
    if *deprecated* is :const:`True`.
 
-   .. versionadded:: 2.7
+   .. versionadded:: 3.1
 
 
 .. function:: import_fresh_module(name, fresh=(), blocked=(), deprecated=False)
@@ -428,7 +405,7 @@ The :mod:`test.support` module defines the following functions:
    Module and package deprecation messages are suppressed during this import
    if *deprecated* is :const:`True`.
 
-   This function will raise :exc:`unittest.SkipTest` if the named module
+   This function will raise :exc:`unittest.SkipTest` is the named module
    cannot be imported.
 
    Example use::
@@ -440,12 +417,12 @@ The :mod:`test.support` module defines the following functions:
       py_warnings = import_fresh_module('warnings', blocked=['_warnings'])
       c_warnings = import_fresh_module('warnings', fresh=['_warnings'])
 
-   .. versionadded:: 2.7
+   .. versionadded:: 3.1
 
 
 The :mod:`test.support` module defines the following classes:
 
-.. class:: TransientResource(exc[, **kwargs])
+.. class:: TransientResource(exc, **kwargs)
 
    Instances are a context manager that raises :exc:`ResourceDenied` if the
    specified exception type is raised.  Any keyword arguments are treated as
@@ -453,7 +430,7 @@ The :mod:`test.support` module defines the following classes:
    :keyword:`with` statement.  Only if all pairs match properly against
    attributes on the exception is :exc:`ResourceDenied` raised.
 
-   .. versionadded:: 2.6
+
 .. class:: EnvironmentVarGuard()
 
    Class used to temporarily set or unset environment variables.  Instances can
@@ -462,10 +439,8 @@ The :mod:`test.support` module defines the following classes:
    context manager all changes to environment variables done through this
    instance will be rolled back.
 
-   .. versionadded:: 2.6
-   .. versionchanged:: 2.7
+   .. versionchanged:: 3.1
       Added dictionary interface.
-
 
 .. method:: EnvironmentVarGuard.set(envvar, value)
 
@@ -482,5 +457,3 @@ The :mod:`test.support` module defines the following classes:
 
    Class used to record warnings for unit tests. See documentation of
    :func:`check_warnings` above for more details.
-
-   .. versionadded:: 2.6

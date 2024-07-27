@@ -67,9 +67,11 @@ def _run_code(code, run_globals, init_globals=None,
         run_globals.update(init_globals)
     run_globals.update(__name__ = mod_name,
                        __file__ = mod_fname,
+                       __cached__ = None,
+                       __doc__ = None,
                        __loader__ = mod_loader,
                        __package__ = pkg_name)
-    exec code in run_globals
+    exec(code, run_globals)
     return run_globals
 
 def _run_module_code(code, init_globals=None,
@@ -97,53 +99,29 @@ def _get_filename(loader, mod_name):
     return None
 
 # Helper to get the loader, code and filename for a module
-def _get_module_details(mod_name, error=ImportError):
-    try:
-        loader = get_loader(mod_name)
-        if loader is None:
-            raise error("No module named %s" % mod_name)
-        ispkg = loader.is_package(mod_name)
-    except ImportError as e:
-        raise error(format(e))
-    if ispkg:
+def _get_module_details(mod_name):
+    loader = get_loader(mod_name)
+    if loader is None:
+        raise ImportError("No module named %s" % mod_name)
+    if loader.is_package(mod_name):
         if mod_name == "__main__" or mod_name.endswith(".__main__"):
-            raise error("Cannot use package as __main__ module")
-        __import__(mod_name)  # Do not catch exceptions initializing package
+            raise ImportError("Cannot use package as __main__ module")
         try:
             pkg_main_name = mod_name + ".__main__"
             return _get_module_details(pkg_main_name)
-        except ImportError, e:
-            raise error(("%s; %r is a package and cannot " +
+        except ImportError as e:
+            raise ImportError(("%s; %r is a package and cannot " +
                                "be directly executed") %(e, mod_name))
-    try:
-        code = loader.get_code(mod_name)
-    except ImportError as e:
-        raise error(format(e))
+    code = loader.get_code(mod_name)
     if code is None:
-        raise error("No code object available for %s" % mod_name)
+        raise ImportError("No code object available for %s" % mod_name)
     filename = _get_filename(loader, mod_name)
     return mod_name, loader, code, filename
 
-
-def _get_main_module_details(error=ImportError):
-    # Helper that gives a nicer error message when attempting to
-    # execute a zipfile or directory by invoking __main__.py
-    main_name = "__main__"
-    try:
-        return _get_module_details(main_name)
-    except ImportError as exc:
-        if main_name in str(exc):
-            raise error("can't find %r module in %r" %
-                              (main_name, sys.path[0]))
-        raise
-
-class _Error(Exception):
-    """Error that _run_module_as_main() should report without a traceback"""
-
-# This function is the actual implementation of the -m switch and direct
-# execution of zipfiles and directories and is deliberately kept private.
-# This avoids a repeat of the situation where run_module() no longer met the
-# needs of mainmodule.c, but couldn't be changed because it was public
+# XXX ncoghlan: Should this be documented and made public?
+# (Current thoughts: don't repeat the mistake that lead to its
+# creation when run_module() no longer met the needs of
+# mainmodule.c, but couldn't be changed because it was public)
 def _run_module_as_main(mod_name, alter_argv=True):
     """Runs the designated module in the __main__ namespace
 
@@ -154,17 +132,26 @@ def _run_module_as_main(mod_name, alter_argv=True):
        At the very least, these variables in __main__ will be overwritten:
            __name__
            __file__
+           __cached__
            __loader__
            __package__
     """
     try:
         if alter_argv or mod_name != "__main__": # i.e. -m switch
-            mod_name, loader, code, fname = _get_module_details(
-                mod_name, _Error)
+            mod_name, loader, code, fname = _get_module_details(mod_name)
         else:          # i.e. directory or zipfile execution
-            mod_name, loader, code, fname = _get_main_module_details(_Error)
-    except _Error as exc:
-        msg = "%s: %s" % (sys.executable, exc)
+            mod_name, loader, code, fname = _get_main_module_details()
+    except ImportError as exc:
+        # Try to provide a good error message
+        # for directories, zip files and the -m switch
+        if alter_argv:
+            # For -m switch, just display the exception
+            info = str(exc)
+        else:
+            # For directories/zipfiles, let the user
+            # know what the code was looking for
+            info = "can't find '__main__' module in %r" % sys.argv[0]
+        msg = "%s: %s" % (sys.executable, info)
         sys.exit(msg)
     pkg_name = mod_name.rpartition('.')[0]
     main_globals = sys.modules["__main__"].__dict__
@@ -190,6 +177,18 @@ def run_module(mod_name, init_globals=None,
         # Leave the sys module alone
         return _run_code(code, {}, init_globals, run_name,
                          fname, loader, pkg_name)
+
+def _get_main_module_details():
+    # Helper that gives a nicer error message when attempting to
+    # execute a zipfile or directory by invoking __main__.py
+    main_name = "__main__"
+    try:
+        return _get_module_details(main_name)
+    except ImportError as exc:
+        if main_name in str(exc):
+            raise ImportError("can't find %r module in %r" %
+                              (main_name, sys.path[0]))
+        raise
 
 
 # XXX (ncoghlan): Perhaps expose the C API function
@@ -228,7 +227,7 @@ def _get_code_from_file(fname):
         code = read_code(f)
     if code is None:
         # That didn't work, so try it as normal source code
-        with open(fname, "rU") as f:
+        with open(fname, "rb") as f:
             code = compile(f.read(), fname, 'exec')
     return code
 
@@ -244,12 +243,14 @@ def run_path(path_name, init_globals=None, run_name=None):
     """
     if run_name is None:
         run_name = "<run_path>"
+    pkg_name = run_name.rpartition(".")[0]
     importer = _get_importer(path_name)
     if isinstance(importer, imp.NullImporter):
         # Not a valid sys.path entry, so run the code directly
         # execfile() doesn't help as we want to allow compiled files
         code = _get_code_from_file(path_name)
-        return _run_module_code(code, init_globals, run_name, path_name)
+        return _run_module_code(code, init_globals, run_name, path_name,
+                                pkg_name=pkg_name)
     else:
         # Importer is defined for path, so add it to
         # the start of sys.path
@@ -268,7 +269,6 @@ def run_path(path_name, init_globals=None, run_name=None):
                 mod_name, loader, code, fname = _get_main_module_details()
             finally:
                 sys.modules[main_name] = saved_main
-            pkg_name = ""
             with _TempModule(run_name) as temp_module, \
                  _ModifiedArgv0(path_name):
                 mod_globals = temp_module.module.__dict__
@@ -284,7 +284,7 @@ def run_path(path_name, init_globals=None, run_name=None):
 if __name__ == "__main__":
     # Run the module specified as the next command line argument
     if len(sys.argv) < 2:
-        print >> sys.stderr, "No module specified for execution"
+        print("No module specified for execution", file=sys.stderr)
     else:
         del sys.argv[0] # Make the requested module sys.argv[0]
         _run_module_as_main(sys.argv[0])

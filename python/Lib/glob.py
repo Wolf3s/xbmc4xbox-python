@@ -1,17 +1,8 @@
 """Filename globbing utility."""
 
-import sys
 import os
 import re
 import fnmatch
-
-try:
-    _unicode = unicode
-except NameError:
-    # If Python is built without Unicode support, the unicode type
-    # will not exist. Fake one.
-    class _unicode(object):
-        pass
 
 __all__ = ["glob", "iglob"]
 
@@ -35,18 +26,13 @@ def iglob(pathname):
     patterns.
 
     """
-    dirname, basename = os.path.split(pathname)
     if not has_magic(pathname):
-        if basename:
-            if os.path.lexists(pathname):
-                yield pathname
-        else:
-            # Patterns ending with a slash should match only directories
-            if os.path.isdir(dirname):
-                yield pathname
+        if os.path.lexists(pathname):
+            yield pathname
         return
+    dirname, basename = os.path.split(pathname)
     if not dirname:
-        for name in glob1(os.curdir, basename):
+        for name in glob1(None, basename):
             yield name
         return
     # `os.path.split()` returns the argument itself as a dirname if it is a
@@ -70,20 +56,20 @@ def iglob(pathname):
 
 def glob1(dirname, pattern):
     if not dirname:
-        dirname = os.curdir
-    if isinstance(pattern, _unicode) and not isinstance(dirname, unicode):
-        dirname = unicode(dirname, sys.getfilesystemencoding() or
-                                   sys.getdefaultencoding())
+        if isinstance(pattern, bytes):
+            dirname = bytes(os.curdir, 'ASCII')
+        else:
+            dirname = os.curdir
     try:
         names = os.listdir(dirname)
     except os.error:
         return []
-    if pattern[0] != '.':
-        names = filter(lambda x: x[0] != '.', names)
+    if not _ishidden(pattern):
+        names = [x for x in names if not _ishidden(x)]
     return fnmatch.filter(names, pattern)
 
 def glob0(dirname, basename):
-    if basename == '':
+    if not basename:
         # `os.path.split()` returns an empty basename for paths ending with a
         # directory separator.  'q*x/' should match only directories.
         if os.path.isdir(dirname):
@@ -95,6 +81,14 @@ def glob0(dirname, basename):
 
 
 magic_check = re.compile('[*?[]')
+magic_check_bytes = re.compile(b'[*?[]')
 
 def has_magic(s):
-    return magic_check.search(s) is not None
+    if isinstance(s, bytes):
+        match = magic_check_bytes.search(s)
+    else:
+        match = magic_check.search(s)
+    return match is not None
+
+def _ishidden(path):
+    return path[0] in ('.', b'.'[0])

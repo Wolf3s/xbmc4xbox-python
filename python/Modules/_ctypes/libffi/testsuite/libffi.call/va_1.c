@@ -94,7 +94,7 @@ main (void)
   struct large_tag l1;
 
   int n;
-  ffi_arg res;
+  int res;
 
   unsigned char uc;
   signed char sc;

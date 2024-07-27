@@ -13,37 +13,29 @@ binary mode.
 
 Numeric values are stored with the least significant byte first.
 
-The module supports two versions of the data format: version ``0`` is the
-historical version, version ``1`` (new in Python 2.4) shares interned strings in
-the file, and upon unmarshalling.  Version 2 (new in Python 2.5) uses a binary
-format for floating point numbers.  *Py_MARSHAL_VERSION* indicates the current
-file format (currently 2).
+The module supports two versions of the data format: version 0 is the
+historical version, version 1 shares interned strings in the file, and upon
+unmarshalling.  Version 2 uses a binary format for floating point numbers.
+*Py_MARSHAL_VERSION* indicates the current file format (currently 2).
 
 
 .. c:function:: void PyMarshal_WriteLongToFile(long value, FILE *file, int version)
 
    Marshal a :c:type:`long` integer, *value*, to *file*.  This will only write
    the least-significant 32 bits of *value*; regardless of the size of the
-   native :c:type:`long` type.
-
-   .. versionchanged:: 2.4
-      *version* indicates the file format.
+   native :c:type:`long` type.  *version* indicates the file format.
 
 
 .. c:function:: void PyMarshal_WriteObjectToFile(PyObject *value, FILE *file, int version)
 
    Marshal a Python object, *value*, to *file*.
-
-   .. versionchanged:: 2.4
-      *version* indicates the file format.
+   *version* indicates the file format.
 
 
 .. c:function:: PyObject* PyMarshal_WriteObjectToString(PyObject *value, int version)
 
    Return a string object containing the marshalled representation of *value*.
-
-   .. versionchanged:: 2.4
-      *version* indicates the file format.
+   *version* indicates the file format.
 
 
 The following functions allow marshalled values to be read back in.
@@ -95,6 +87,3 @@ written using these routines?
    appropriate exception (:exc:`EOFError` or :exc:`TypeError`) and returns
    *NULL*.
 
-   .. versionchanged:: 2.5
-      This function used an :c:type:`int` type for *len*. This might require
-      changes in your code for properly supporting 64-bit systems.

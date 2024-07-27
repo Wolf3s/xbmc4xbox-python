@@ -1,4 +1,3 @@
-
 :mod:`xml.sax.xmlreader` --- Interface for XML parsers
 ======================================================
 
@@ -7,8 +6,6 @@
 .. moduleauthor:: Lars Marius Garshol <larsga@garshol.priv.no>
 .. sectionauthor:: Martin v. Löwis <martin@v.loewis.de>
 
-
-.. versionadded:: 2.0
 
 SAX parsers implement the :class:`XMLReader` interface. They are implemented in
 a Python module, which must provide a function :func:`create_parser`. This
@@ -50,7 +47,7 @@ a new  parser object.
    methods may return ``None``.
 
 
-.. class:: InputSource([systemId])
+.. class:: InputSource(system_id=None)
 
    Encapsulation of the information needed by the :class:`XMLReader` to read
    entities.
@@ -101,7 +98,7 @@ The :class:`XMLReader` interface supports the following methods:
 
    Process an input source, producing SAX events. The *source* object can be a
    system identifier (a string identifying the input source -- typically a file
-   name or a URL), a file-like object, or an :class:`InputSource` object. When
+   name or an URL), a file-like object, or an :class:`InputSource` object. When
    :meth:`parse` returns, the input is completely processed, and the parser object
    can be discarded or reset. As a limitation, the current implementation only
    accepts byte streams; processing of character streams is for further study.
@@ -109,50 +106,47 @@ The :class:`XMLReader` interface supports the following methods:
 
 .. method:: XMLReader.getContentHandler()
 
-   Return the current :class:`~xml.sax.handler.ContentHandler`.
+   Return the current :class:`ContentHandler`.
 
 
 .. method:: XMLReader.setContentHandler(handler)
 
-   Set the current :class:`~xml.sax.handler.ContentHandler`.  If no
-   :class:`~xml.sax.handler.ContentHandler` is set, content events will be
-   discarded.
+   Set the current :class:`ContentHandler`.  If no :class:`ContentHandler` is set,
+   content events will be discarded.
 
 
 .. method:: XMLReader.getDTDHandler()
 
-   Return the current :class:`~xml.sax.handler.DTDHandler`.
+   Return the current :class:`DTDHandler`.
 
 
 .. method:: XMLReader.setDTDHandler(handler)
 
-   Set the current :class:`~xml.sax.handler.DTDHandler`.  If no
-   :class:`~xml.sax.handler.DTDHandler` is set, DTD
+   Set the current :class:`DTDHandler`.  If no :class:`DTDHandler` is set, DTD
    events will be discarded.
 
 
 .. method:: XMLReader.getEntityResolver()
 
-   Return the current :class:`~xml.sax.handler.EntityResolver`.
+   Return the current :class:`EntityResolver`.
 
 
 .. method:: XMLReader.setEntityResolver(handler)
 
-   Set the current :class:`~xml.sax.handler.EntityResolver`.  If no
-   :class:`~xml.sax.handler.EntityResolver` is set,
+   Set the current :class:`EntityResolver`.  If no :class:`EntityResolver` is set,
    attempts to resolve an external entity will result in opening the system
    identifier for the entity, and fail if it is not available.
 
 
 .. method:: XMLReader.getErrorHandler()
 
-   Return the current :class:`~xml.sax.handler.ErrorHandler`.
+   Return the current :class:`ErrorHandler`.
 
 
 .. method:: XMLReader.setErrorHandler(handler)
 
-   Set the current error handler.  If no :class:`~xml.sax.handler.ErrorHandler`
-   is set, errors will be raised as exceptions, and warnings will be printed.
+   Set the current error handler.  If no :class:`ErrorHandler` is set, errors will
+   be raised as exceptions, and warnings will be printed.
 
 
 .. method:: XMLReader.setLocale(locale)
@@ -229,12 +223,12 @@ Instances of :class:`Locator` provide these methods:
 
 .. method:: Locator.getColumnNumber()
 
-   Return the column number where the current event begins.
+   Return the column number where the current event ends.
 
 
 .. method:: Locator.getLineNumber()
 
-   Return the line number where the current event begins.
+   Return the line number where the current event ends.
 
 
 .. method:: Locator.getPublicId()
@@ -306,13 +300,13 @@ InputSource Objects
    Get the byte stream for this input source.
 
    The getEncoding method will return the character encoding for this byte stream,
-   or ``None`` if unknown.
+   or None if unknown.
 
 
 .. method:: InputSource.setCharacterStream(charfile)
 
    Set the character stream for this input source. (The stream must be a Python 1.6
-   Unicode-wrapped file-like that performs conversion to Unicode strings.)
+   Unicode-wrapped file-like that performs conversion to strings.)
 
    If there is a character stream specified, the SAX parser will ignore any byte
    stream and will not attempt to open a URI connection to the system identifier.
@@ -329,12 +323,8 @@ The :class:`Attributes` Interface
 ---------------------------------
 
 :class:`Attributes` objects implement a portion of the mapping protocol,
-including the methods :meth:`~collections.Mapping.copy`,
-:meth:`~collections.Mapping.get`,
-:meth:`~collections.Mapping.has_key`,
-:meth:`~collections.Mapping.items`,
-:meth:`~collections.Mapping.keys`,
-and :meth:`~collections.Mapping.values`.  The following methods
+including the methods :meth:`copy`, :meth:`get`, :meth:`__contains__`,
+:meth:`items`, :meth:`keys`, and :meth:`values`.  The following methods
 are also provided:
 
 

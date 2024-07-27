@@ -2,7 +2,6 @@
 /* UNIX group file access module */
 
 #include "Python.h"
-#include "structseq.h"
 #include "posixmodule.h"
 
 #include <grp.h>
@@ -11,7 +10,7 @@ static PyStructSequence_Field struct_group_type_fields[] = {
    {"gr_name", "group name"},
    {"gr_passwd", "password"},
    {"gr_gid", "group id"},
-   {"gr_mem", "group members"},
+   {"gr_mem", "group memebers"},
    {0}
 };
 
@@ -47,7 +46,7 @@ mkgrent(struct group *p)
         return NULL;
     }
     for (member = p->gr_mem; *member != NULL; member++) {
-        PyObject *x = PyString_FromString(*member);
+        PyObject *x = PyUnicode_DecodeFSDefault(*member);
         if (x == NULL || PyList_Append(w, x) != 0) {
             Py_XDECREF(x);
             Py_DECREF(w);
@@ -58,19 +57,19 @@ mkgrent(struct group *p)
     }
 
 #define SET(i,val) PyStructSequence_SET_ITEM(v, i, val)
-    SET(setIndex++, PyString_FromString(p->gr_name));
+    SET(setIndex++, PyUnicode_DecodeFSDefault(p->gr_name));
 #ifdef __VMS
     SET(setIndex++, Py_None);
     Py_INCREF(Py_None);
 #else
     if (p->gr_passwd)
-	    SET(setIndex++, PyString_FromString(p->gr_passwd));
+            SET(setIndex++, PyUnicode_DecodeFSDefault(p->gr_passwd));
     else {
-	    SET(setIndex++, Py_None);
-	    Py_INCREF(Py_None);
+            SET(setIndex++, Py_None);
+            Py_INCREF(Py_None);
     }
 #endif
-    SET(setIndex++, _PyInt_FromGid(p->gr_gid));
+    SET(setIndex++, _PyLong_FromGid(p->gr_gid));
     SET(setIndex++, w);
 #undef SET
 
@@ -89,7 +88,7 @@ grp_getgrgid(PyObject *self, PyObject *pyo_id)
     gid_t gid;
     struct group *p;
 
-    py_int_id = PyNumber_Int(pyo_id);
+    py_int_id = PyNumber_Long(pyo_id);
     if (!py_int_id)
             return NULL;
     if (!_Py_Gid_Converter(py_int_id, &gid)) {
@@ -99,37 +98,38 @@ grp_getgrgid(PyObject *self, PyObject *pyo_id)
     Py_DECREF(py_int_id);
 
     if ((p = getgrgid(gid)) == NULL) {
-        if (gid < 0)
-            PyErr_Format(PyExc_KeyError,
-                         "getgrgid(): gid not found: %ld", (long)gid);
-        else
-            PyErr_Format(PyExc_KeyError,
-                         "getgrgid(): gid not found: %lu", (unsigned long)gid);
+        PyObject *gid_obj = _PyLong_FromGid(gid);
+        if (gid_obj == NULL)
+            return NULL;
+        PyErr_Format(PyExc_KeyError, "getgrgid(): gid not found: %S", gid_obj);
+        Py_DECREF(gid_obj);
         return NULL;
     }
     return mkgrent(p);
 }
 
 static PyObject *
-grp_getgrnam(PyObject *self, PyObject *pyo_name)
+grp_getgrnam(PyObject *self, PyObject *args)
 {
-    PyObject *py_str_name;
     char *name;
     struct group *p;
+    PyObject *arg, *bytes, *retval = NULL;
 
-    py_str_name = PyObject_Str(pyo_name);
-    if (!py_str_name)
-	    return NULL;
-    name = PyString_AS_STRING(py_str_name);
+    if (!PyArg_ParseTuple(args, "U:getgrnam", &arg))
+        return NULL;
+    if ((bytes = PyUnicode_EncodeFSDefault(arg)) == NULL)
+        return NULL;
+    if (PyBytes_AsStringAndSize(bytes, &name, NULL) == -1)
+        goto out;
 
     if ((p = getgrnam(name)) == NULL) {
-	PyErr_Format(PyExc_KeyError, "getgrnam(): name not found: %s", name);
-	Py_DECREF(py_str_name);
-        return NULL;
+        PyErr_Format(PyExc_KeyError, "getgrnam(): name not found: %s", name);
+        goto out;
     }
-
-    Py_DECREF(py_str_name);
-    return mkgrent(p);
+    retval = mkgrent(p);
+out:
+    Py_DECREF(bytes);
+    return retval;
 }
 
 static PyObject *
@@ -156,20 +156,20 @@ grp_getgrall(PyObject *self, PyObject *ignore)
 }
 
 static PyMethodDef grp_methods[] = {
-    {"getgrgid",	grp_getgrgid,	METH_O,
-     "getgrgid(id) -> (gr_name,gr_passwd,gr_gid,gr_mem)\n\
+    {"getgrgid",        grp_getgrgid,   METH_O,
+     "getgrgid(id) -> tuple\n\
 Return the group database entry for the given numeric group ID.  If\n\
 id is not valid, raise KeyError."},
-    {"getgrnam",	grp_getgrnam,	METH_O,
-     "getgrnam(name) -> (gr_name,gr_passwd,gr_gid,gr_mem)\n\
+    {"getgrnam",        grp_getgrnam,   METH_VARARGS,
+     "getgrnam(name) -> tuple\n\
 Return the group database entry for the given group name.  If\n\
 name is not valid, raise KeyError."},
-    {"getgrall",	grp_getgrall,	METH_NOARGS,
+    {"getgrall",        grp_getgrall,   METH_NOARGS,
      "getgrall() -> list of tuples\n\
 Return a list of all available group entries, in arbitrary order.\n\
 An entry whose name starts with '+' or '-' represents an instruction\n\
 to use YP/NIS and may not be accessible via getgrnam or getgrgid."},
-    {NULL,		NULL}		/* sentinel */
+    {NULL,              NULL}           /* sentinel */
 };
 
 PyDoc_STRVAR(grp__doc__,
@@ -178,10 +178,10 @@ PyDoc_STRVAR(grp__doc__,
 Group entries are reported as 4-tuples containing the following fields\n\
 from the group database, in order:\n\
 \n\
-  gr_name   - name of the group\n\
-  gr_passwd - group password (encrypted); often empty\n\
-  gr_gid    - numeric ID of the group\n\
-  gr_mem    - list of members\n\
+  name   - name of the group\n\
+  passwd - group password (encrypted); often empty\n\
+  gid    - numeric ID of the group\n\
+  mem    - list of members\n\
 \n\
 The gid is an integer, name and password are strings.  (Note that most\n\
 users are not explicitly listed as members of the groups they are in\n\
@@ -189,16 +189,30 @@ according to the password database.  Check both databases to get\n\
 complete membership information.)");
 
 
+
+static struct PyModuleDef grpmodule = {
+        PyModuleDef_HEAD_INIT,
+        "grp",
+        grp__doc__,
+        -1,
+        grp_methods,
+        NULL,
+        NULL,
+        NULL,
+        NULL
+};
+
 PyMODINIT_FUNC
-initgrp(void)
+PyInit_grp(void)
 {
     PyObject *m, *d;
-    m = Py_InitModule3("grp", grp_methods, grp__doc__);
+    m = PyModule_Create(&grpmodule);
     if (m == NULL)
-        return;
+        return NULL;
     d = PyModule_GetDict(m);
     if (!initialized)
-	    PyStructSequence_InitType(&StructGrpType, &struct_group_type_desc);
+            PyStructSequence_InitType(&StructGrpType, &struct_group_type_desc);
     PyDict_SetItemString(d, "struct_group", (PyObject *) &StructGrpType);
     initialized = 1;
+    return m;
 }

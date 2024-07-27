@@ -101,7 +101,7 @@ initialize_aggregate(
 /* Perform machine independent ffi_cif preparation, then call
    machine dependent routine. */
 
-#if defined(X86_DARWIN) && !defined __x86_64__
+#if defined(X86_DARWIN)
 
 static inline bool
 struct_on_stack(
@@ -124,7 +124,7 @@ struct_on_stack(
 	}
 }
 
-#endif	// defined(X86_DARWIN) && !defined __x86_64__
+#endif	// defined(X86_DARWIN)
 
 // Arguments' ffi_type->alignment must be nonzero.
 ffi_status

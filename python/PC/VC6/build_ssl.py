@@ -47,15 +47,15 @@ def find_working_perl(perls):
         if rc:
             continue
         return perl
-    print "Can not find a suitable PERL:"
+    print("Can not find a suitable PERL:")
     if perls:
-        print " the following perl interpreters were found:"
+        print(" the following perl interpreters were found:")
         for p in perls:
-            print " ", p
-        print " None of these versions appear suitable for building OpenSSL"
+            print(" ", p)
+        print(" None of these versions appear suitable for building OpenSSL")
     else:
-        print " NO perl interpreters were found on this machine at all!"
-    print " Please install ActivePerl and ensure it appears on your path"
+        print(" NO perl interpreters were found on this machine at all!")
+    print(" Please install ActivePerl and ensure it appears on your path")
     return None
 
 # Locate the best SSL directory given a few roots to look into.
@@ -84,9 +84,9 @@ def find_best_ssl_dir(sources):
             best_parts = parts
             best_name = c
     if best_name is not None:
-        print "Found an SSL directory at '%s'" % (best_name,)
+        print("Found an SSL directory at '%s'" % (best_name,))
     else:
-        print "Could not find an SSL directory in '%s'" % (sources,)
+        print("Could not find an SSL directory in '%s'" % (sources,))
     sys.stdout.flush()
     return best_name
 
@@ -95,13 +95,9 @@ def fix_makefile(makefile):
     """
     if not os.path.isfile(makefile):
         return
-    # 2.4 compatibility
-    fin = open(makefile)
-    if 1: # with open(makefile) as fin:
+    with open(makefile) as fin:
         lines = fin.readlines()
-        fin.close()
-    fout = open(makefile, 'w')
-    if 1: # with open(makefile, 'w') as fout:
+    with open(makefile, 'w') as fout:
         for line in lines:
             if line.startswith("PERL="):
                 continue
@@ -117,12 +113,11 @@ def fix_makefile(makefile):
                         line = line + noalgo
                 line = line + '\n'
             fout.write(line)
-    fout.close()
 
 def run_configure(configure, do_script):
-    print "perl Configure "+configure
+    print("perl Configure "+configure)
     os.system("perl Configure "+configure)
-    print do_script
+    print(do_script)
     os.system(do_script)
 
 def cmp(f1, f2):
@@ -160,9 +155,9 @@ def main():
     perls = find_all_on_path("perl.exe", ["\\perl\\bin", "C:\\perl\\bin"])
     perl = find_working_perl(perls)
     if perl:
-        print "Found a working perl at '%s'" % (perl,)
+        print("Found a working perl at '%s'" % (perl,))
     else:
-        print "No Perl installation was found. Existing Makefiles are used."
+        print("No Perl installation was found. Existing Makefiles are used.")
     sys.stdout.flush()
     # Look for SSL 3 levels up from PC/VC6 - ie, same place zlib etc all live.
     ssl_dir = find_best_ssl_dir(("..\\..\\..",))
@@ -177,10 +172,10 @@ def main():
         # Force a regeneration if it is.
         if not os.path.isfile(makefile) or os.path.getsize(makefile)==0:
             if perl is None:
-                print "Perl is required to build the makefiles!"
+                print("Perl is required to build the makefiles!")
                 sys.exit(1)
 
-            print "Creating the makefiles..."
+            print("Creating the makefiles...")
             sys.stdout.flush()
             # Put our working Perl at the front of our path
             os.environ["PATH"] = os.path.dirname(perl) + \
@@ -188,7 +183,7 @@ def main():
                                           os.environ["PATH"]
             run_configure(configure, do_script)
             if debug:
-                print "OpenSSL debug builds aren't supported."
+                print("OpenSSL debug builds aren't supported.")
             #if arch=="x86" and debug:
             #    # the do_masm script in openssl doesn't generate a debug
             #    # build makefile so we generate it here:
@@ -199,7 +194,7 @@ def main():
             copy(r"crypto\opensslconf.h", r"crypto\opensslconf_%s.h" % arch)
 
         # If the assembler files don't exist in tmpXX, copy them there
-        if perl is None:
+        if perl is None and os.path.exists("asm"+dirsuffix):
             if not os.path.exists("tmp"+dirsuffix):
                 os.mkdir("tmp"+dirsuffix)
             for f in os.listdir("asm"+dirsuffix):
@@ -213,12 +208,12 @@ def main():
 
         #makeCommand = "nmake /nologo PERL=\"%s\" -f \"%s\"" %(perl, makefile)
         makeCommand = "nmake /nologo -f \"%s\"" % makefile
-        print "Executing ssl makefiles:", makeCommand
+        print("Executing ssl makefiles:", makeCommand)
         sys.stdout.flush()
         rc = os.system(makeCommand)
         if rc:
-            print "Executing "+makefile+" failed"
-            print rc
+            print("Executing "+makefile+" failed")
+            print(rc)
             sys.exit(rc)
     finally:
         os.chdir(old_cd)

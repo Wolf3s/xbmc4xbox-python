@@ -3,7 +3,7 @@
 Under Windows it is unlikely the .obj files are of use, as special compiler options
 are needed (primarily to toggle the behavior of "public" symbols.
 
-I don't consider it worth parsing the MSVC makefiles for compiler options.  Even if
+I dont consider it worth parsing the MSVC makefiles for compiler options.  Even if
 we get it just right, a specific freeze application may have specific compiler
 options anyway (eg, to enable or disable specific functionality)
 
@@ -14,7 +14,7 @@ So my basic strategy is:
   your own).
 * This description can include:
   - The MSVC .dsp file for the extension.  The .c source file names
-    are extracted from there.
+    are extraced from there.
   - Specific compiler/linker options
   - Flag to indicate if Unicode compilation is expected.
 
@@ -118,7 +118,7 @@ def get_extension_defn(moduleName, mapFileName, prefix):
 
     for exc in exclude:
         if exc in module.sourceFiles:
-            module.sourceFiles.remove(exc)
+            modules.sourceFiles.remove(exc)
 
     return module
 
@@ -131,7 +131,7 @@ def parse_dsp(dsp):
     dsp_path, dsp_name = os.path.split(dsp)
     try:
         lines = open(dsp, "r").readlines()
-    except IOError, msg:
+    except IOError as msg:
         sys.stderr.write("%s: %s\n" % (dsp, msg))
         return None
     for line in lines:

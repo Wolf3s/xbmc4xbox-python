@@ -2,8 +2,6 @@
 
 #include "Python.h"
 #include "frameobject.h"
-#include "genobject.h"
-#include "ceval.h"
 #include "structmember.h"
 #include "opcode.h"
 
@@ -76,7 +74,6 @@ gen_send_ex(PyGenObject *gen, PyObject *arg, int exc)
 
     /* Generators always return to their most recent caller, not
      * necessarily their creator. */
-    f->f_tstate = tstate;
     Py_XINCREF(tstate->frame);
     assert(f->f_back == NULL);
     f->f_back = tstate->frame;
@@ -90,8 +87,6 @@ gen_send_ex(PyGenObject *gen, PyObject *arg, int exc)
      * cycle. */
     assert(f->f_back == tstate->frame);
     Py_CLEAR(f->f_back);
-    /* Clear the borrowed reference to the thread state */
-    f->f_tstate = NULL;
 
     /* If the generator just returned (as opposed to yielding), signal
      * that the generator is exhausted. */
@@ -105,6 +100,17 @@ gen_send_ex(PyGenObject *gen, PyObject *arg, int exc)
 
     if (!result || f->f_stacktop == NULL) {
         /* generator can't be rerun, so release the frame */
+        /* first clean reference cycle through stored exception traceback */
+        PyObject *t, *v, *tb;
+        t = f->f_exc_type;
+        v = f->f_exc_value;
+        tb = f->f_exc_traceback;
+        f->f_exc_type = NULL;
+        f->f_exc_value = NULL;
+        f->f_exc_traceback = NULL;
+        Py_XDECREF(t);
+        Py_XDECREF(v);
+        Py_XDECREF(tb);
         Py_DECREF(f);
         gen->gi_frame = NULL;
     }
@@ -226,8 +232,9 @@ gen_throw(PyGenObject *gen, PyObject *args)
 
     /* First, check the traceback argument, replacing None with
        NULL. */
-    if (tb == Py_None)
+    if (tb == Py_None) {
         tb = NULL;
+    }
     else if (tb != NULL && !PyTraceBack_Check(tb)) {
         PyErr_SetString(PyExc_TypeError,
             "throw() third argument must be a traceback object");
@@ -238,9 +245,8 @@ gen_throw(PyGenObject *gen, PyObject *args)
     Py_XINCREF(val);
     Py_XINCREF(tb);
 
-    if (PyExceptionClass_Check(typ)) {
+    if (PyExceptionClass_Check(typ))
         PyErr_NormalizeException(&typ, &val, &tb);
-    }
 
     else if (PyExceptionInstance_Check(typ)) {
         /* Raising an instance.  The value should be a dummy. */
@@ -255,12 +261,17 @@ gen_throw(PyGenObject *gen, PyObject *args)
             val = typ;
             typ = PyExceptionInstance_Class(typ);
             Py_INCREF(typ);
+
+            if (tb == NULL)
+                /* Returns NULL if there's no traceback */
+                tb = PyException_GetTraceback(val);
         }
     }
     else {
         /* Not something you can raise.  throw() fails. */
         PyErr_Format(PyExc_TypeError,
-                     "exceptions must be classes, or instances, not %s",
+                     "exceptions must be classes or instances "
+                     "deriving from BaseException, not %s",
                      typ->ob_type->tp_name);
             goto failed_throw;
     }
@@ -287,12 +298,9 @@ gen_iternext(PyGenObject *gen)
 static PyObject *
 gen_repr(PyGenObject *gen)
 {
-    char *code_name;
-    code_name = PyString_AsString(((PyCodeObject *)gen->gi_code)->co_name);
-    if (code_name == NULL)
-        return NULL;
-    return PyString_FromFormat("<generator object %.200s at %p>",
-                               code_name, gen);
+    return PyUnicode_FromFormat("<generator object %S at %p>",
+                                ((PyCodeObject *)gen->gi_code)->co_name,
+                                gen);
 }
 
 
@@ -315,9 +323,9 @@ static PyGetSetDef gen_getsetlist[] = {
 
 
 static PyMemberDef gen_memberlist[] = {
-    {"gi_frame",        T_OBJECT, offsetof(PyGenObject, gi_frame),      RO},
-    {"gi_running",      T_INT,    offsetof(PyGenObject, gi_running),    RO},
-    {"gi_code",     T_OBJECT, offsetof(PyGenObject, gi_code),  RO},
+    {"gi_frame",        T_OBJECT, offsetof(PyGenObject, gi_frame),      READONLY},
+    {"gi_running",      T_INT,    offsetof(PyGenObject, gi_running),    READONLY},
+    {"gi_code",     T_OBJECT, offsetof(PyGenObject, gi_code),  READONLY},
     {NULL}      /* Sentinel */
 };
 
@@ -338,7 +346,7 @@ PyTypeObject PyGen_Type = {
     0,                                          /* tp_print */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
-    0,                                          /* tp_compare */
+    0,                                          /* tp_reserved */
     (reprfunc)gen_repr,                         /* tp_repr */
     0,                                          /* tp_as_number */
     0,                                          /* tp_as_sequence */

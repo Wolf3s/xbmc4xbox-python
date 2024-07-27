@@ -1,6 +1,6 @@
 """AutoComplete.py - An IDLE extension for automatically completing names.
 
-This extension can complete either attribute names or file names. It can pop
+This extension can complete either attribute names of file names. It can pop
 a window with all available names, for the user to select from.
 """
 import os
@@ -67,7 +67,7 @@ class AutoComplete:
 
     def try_open_completions_event(self, event):
         """Happens when it would be nice to open a completion list, but not
-        really necessary, for example after a dot, so function
+        really necessary, for example after an dot, so function
         calls won't be made.
         """
         lastchar = self.text.get("insert-1c")
@@ -124,19 +124,26 @@ class AutoComplete:
         curline = self.text.get("insert linestart", "insert")
         i = j = len(curline)
         if hp.is_in_string() and (not mode or mode==COMPLETE_FILES):
+            # Find the beginning of the string
+            # fetch_completions will look at the file system to determine whether the
+            # string value constitutes an actual file name
+            # XXX could consider raw strings here and unescape the string value if it's
+            # not raw.
             self._remove_autocomplete_window()
             mode = COMPLETE_FILES
-            while i and curline[i-1] in FILENAME_CHARS:
+            # Find last separator or string start
+            while i and curline[i-1] not in "'\"" + SEPS:
                 i -= 1
             comp_start = curline[i:j]
             j = i
-            while i and curline[i-1] in FILENAME_CHARS + SEPS:
+            # Find string start
+            while i and curline[i-1] not in "'\"":
                 i -= 1
             comp_what = curline[i:j]
         elif hp.is_in_code() and (not mode or mode==COMPLETE_ATTRIBUTES):
             self._remove_autocomplete_window()
             mode = COMPLETE_ATTRIBUTES
-            while i and curline[i-1] in ID_CHARS:
+            while i and (curline[i-1] in ID_CHARS or ord(curline[i-1]) > 127):
                 i -= 1
             comp_start = curline[i:j]
             if i and curline[i-1] == '.':
@@ -156,9 +163,12 @@ class AutoComplete:
         if not comp_lists[0]:
             return
         self.autocompletewindow = self._make_autocomplete_window()
-        return not self.autocompletewindow.show_window(
-                comp_lists, "insert-%dc" % len(comp_start),
-                complete, mode, userWantsWin)
+        self.autocompletewindow.show_window(comp_lists,
+                                            "insert-%dc" % len(comp_start),
+                                            complete,
+                                            mode,
+                                            userWantsWin)
+        return True
 
     def fetch_completions(self, what, mode):
         """Return a pair of lists of completions for something. The first list
@@ -222,8 +232,3 @@ class AutoComplete:
         namespace = sys.modules.copy()
         namespace.update(__main__.__dict__)
         return eval(name, namespace)
-
-
-if __name__ == '__main__':
-    from unittest import main
-    main('idlelib.idle_test.test_autocomplete', verbosity=2)

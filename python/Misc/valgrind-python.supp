@@ -5,7 +5,7 @@
 #
 #	cd python/dist/src
 #	valgrind --tool=memcheck --suppressions=Misc/valgrind-python.supp \
-#		./python -E -tt ./Lib/test/regrtest.py -u bsddb,network
+#		./python -E ./Lib/test/regrtest.py -u gui,network
 #
 # You must edit Objects/obmalloc.c and uncomment Py_USING_MEMORY_DEBUGGER
 # to use the preferred suppressions with Py_ADDRESS_IN_RANGE.
@@ -103,14 +103,6 @@
    fun:COMMENT_THIS_LINE_TO_DISABLE_LEAK_WARNING
 }
 
-{
-   bpo-37329: _PyWarnings_Init allocates memory at startup, but doesn't release it at exit
-   Memcheck:Leak
-   fun:malloc
-   ...
-   fun:_PyWarnings_Init
-}
-
 #
 # Non-python specific leaks
 #
@@ -145,18 +137,6 @@
 ###}
 ###
 ###{
-###   ADDRESS_IN_RANGE/Use of uninitialised value of size 8
-###   Memcheck:Addr8
-###   fun:PyObject_Free
-###}
-###
-###{
-###   ADDRESS_IN_RANGE/Use of uninitialised value of size 8
-###   Memcheck:Value8
-###   fun:PyObject_Free
-###}
-###
-###{
 ###   ADDRESS_IN_RANGE/Conditional jump or move depends on uninitialised value
 ###   Memcheck:Cond
 ###   fun:PyObject_Free
@@ -171,18 +151,6 @@
 ###{
 ###   ADDRESS_IN_RANGE/Invalid read of size 4
 ###   Memcheck:Value4
-###   fun:PyObject_Realloc
-###}
-###
-###{
-###   ADDRESS_IN_RANGE/Use of uninitialised value of size 8
-###   Memcheck:Addr8
-###   fun:PyObject_Realloc
-###}
-###
-###{
-###   ADDRESS_IN_RANGE/Use of uninitialised value of size 8
-###   Memcheck:Value8
 ###   fun:PyObject_Realloc
 ###}
 ###

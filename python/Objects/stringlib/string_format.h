@@ -496,15 +496,28 @@ get_field_object(SubString *input, PyObject *args, PyObject *kwargs,
         PyObject *key = SubString_new_object(&first);
         if (key == NULL)
             goto error;
-        if ((kwargs == NULL) || (obj = PyDict_GetItem(kwargs, key)) == NULL) {
+
+        /* Use PyObject_GetItem instead of PyDict_GetItem because this
+           code is no longer just used with kwargs. It might be passed
+           a non-dict when called through format_map. */
+        if ((kwargs == NULL) || (obj = PyObject_GetItem(kwargs, key)) == NULL) {
             PyErr_SetObject(PyExc_KeyError, key);
             Py_DECREF(key);
             goto error;
         }
         Py_DECREF(key);
-        Py_INCREF(obj);
     }
     else {
+        /* If args is NULL, we have a format string with a positional field
+           with only kwargs to retrieve it from. This can only happen when
+           used with format_map(), where positional arguments are not
+           allowed. */
+        if (args == NULL) {
+            PyErr_SetString(PyExc_ValueError, "Format string contains "
+                            "positional fields");
+            goto error;
+        }
+
         /* look up in args */
         obj = PySequence_GetItem(args, index);
         if (obj == NULL)
@@ -570,24 +583,15 @@ render_field(PyObject *fieldobj, SubString *format_spec, OutputString *output)
 
     /* If we know the type exactly, skip the lookup of __format__ and just
        call the formatter directly. */
-#if STRINGLIB_IS_UNICODE
     if (PyUnicode_CheckExact(fieldobj))
         formatter = _PyUnicode_FormatAdvanced;
-    /* Unfortunately, there's a problem with checking for int, long,
-       and float here.  If we're being included as unicode, their
-       formatters expect string format_spec args.  For now, just skip
-       this optimization for unicode.  This could be fixed, but it's a
-       hassle. */
-#else
-    if (PyString_CheckExact(fieldobj))
-        formatter = _PyBytes_FormatAdvanced;
-    else if (PyInt_CheckExact(fieldobj))
-        formatter =_PyInt_FormatAdvanced;
     else if (PyLong_CheckExact(fieldobj))
         formatter =_PyLong_FormatAdvanced;
     else if (PyFloat_CheckExact(fieldobj))
         formatter = _PyFloat_FormatAdvanced;
-#endif
+
+    /* XXX: for 2.6, convert format_spec to the appropriate type
+       (unicode, str) */
 
     if (formatter) {
         /* we know exactly which formatter will be called when __format__ is
@@ -610,7 +614,7 @@ render_field(PyObject *fieldobj, SubString *format_spec, OutputString *output)
 #if PY_VERSION_HEX >= 0x03000000
     assert(PyUnicode_Check(result));
 #else
-    assert(PyString_Check(result) || PyUnicode_Check(result));
+    assert(PyBytes_Check(result) || PyUnicode_Check(result));
 
     /* Convert result to our type.  We could be str, and result could
        be unicode */
@@ -849,6 +853,10 @@ do_conversion(PyObject *obj, STRINGLIB_CHAR conversion)
         return PyObject_Repr(obj);
     case 's':
         return STRINGLIB_TOSTR(obj);
+#if PY_VERSION_HEX >= 0x03000000
+    case 'a':
+        return STRINGLIB_TOASCII(obj);
+#endif
     default:
         if (conversion > 32 && conversion < 127) {
                 /* It's the ASCII subrange; casting to char is safe
@@ -1041,6 +1049,11 @@ do_string_format(PyObject *self, PyObject *args, PyObject *kwargs)
     return build_string(&input, args, kwargs, recursion_depth, &auto_number);
 }
 
+static PyObject *
+do_string_format_map(PyObject *self, PyObject *obj)
+{
+    return do_string_format(self, NULL, obj);
+}
 
 
 /************************************************************************/
@@ -1154,7 +1167,7 @@ static PyTypeObject PyFormatterIter_Type = {
     0,                                  /* tp_print */
     0,                                  /* tp_getattr */
     0,                                  /* tp_setattr */
-    0,                                  /* tp_compare */
+    0,                                  /* tp_reserved */
     0,                                  /* tp_repr */
     0,                                  /* tp_as_number */
     0,                                  /* tp_as_sequence */
@@ -1182,9 +1195,14 @@ static PyTypeObject PyFormatterIter_Type = {
    describing the parsed elements.  It's a wrapper around
    stringlib/string_format.h's MarkupIterator */
 static PyObject *
-formatter_parser(STRINGLIB_OBJECT *self)
+formatter_parser(PyObject *ignored, STRINGLIB_OBJECT *self)
 {
     formatteriterobject *it;
+
+    if (!PyUnicode_Check(self)) {
+        PyErr_Format(PyExc_TypeError, "expected str, got %s", Py_TYPE(self)->tp_name);
+        return NULL;
+    }
 
     it = PyObject_New(formatteriterobject, &PyFormatterIter_Type);
     if (it == NULL)
@@ -1287,7 +1305,7 @@ static PyTypeObject PyFieldNameIter_Type = {
     0,                                  /* tp_print */
     0,                                  /* tp_getattr */
     0,                                  /* tp_setattr */
-    0,                                  /* tp_compare */
+    0,                                  /* tp_reserved */
     0,                                  /* tp_repr */
     0,                                  /* tp_as_number */
     0,                                  /* tp_as_sequence */
@@ -1310,14 +1328,14 @@ static PyTypeObject PyFieldNameIter_Type = {
     0};
 
 /* unicode_formatter_field_name_split is used to implement
-   string.Formatter.vformat.  it takes a PEP 3101 "field name", and
+   string.Formatter.vformat.  it takes an PEP 3101 "field name", and
    returns a tuple of (first, rest): "first", the part before the
    first '.' or '['; and "rest", an iterator for the rest of the field
    name.  it's a wrapper around stringlib/string_format.h's
    field_name_split.  The iterator it returns is a
    FieldNameIterator */
 static PyObject *
-formatter_field_name_split(STRINGLIB_OBJECT *self)
+formatter_field_name_split(PyObject *ignored, STRINGLIB_OBJECT *self)
 {
     SubString first;
     Py_ssize_t first_idx;
@@ -1325,6 +1343,11 @@ formatter_field_name_split(STRINGLIB_OBJECT *self)
 
     PyObject *first_obj = NULL;
     PyObject *result = NULL;
+
+    if (!PyUnicode_Check(self)) {
+        PyErr_Format(PyExc_TypeError, "expected str, got %s", Py_TYPE(self)->tp_name);
+        return NULL;
+    }
 
     it = PyObject_New(fieldnameiterobject, &PyFieldNameIter_Type);
     if (it == NULL)

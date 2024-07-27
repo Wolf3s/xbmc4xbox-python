@@ -14,7 +14,7 @@
 {
     static FileSettings *fsdefault_py, *fsdefault_pyw, *fsdefault_pyc;
     FileSettings **curdefault;
-
+    
     if ([filetype isEqualToString: @"Python Script"]) {
         curdefault = &fsdefault_py;
     } else if ([filetype isEqualToString: @"Python GUI Script"]) {
@@ -36,7 +36,7 @@
 {
     static FileSettings *default_py, *default_pyw, *default_pyc;
     FileSettings **curdefault;
-
+    
     if ([filetype isEqualToString: @"Python Script"]) {
         curdefault = &default_py;
     } else if ([filetype isEqualToString: @"Python GUI Script"]) {
@@ -57,7 +57,7 @@
 + (id)newSettingsForFileType: (NSString *)filetype
 {
     FileSettings *cur;
-
+    
     cur = [FileSettings new];
     [cur initForFileType: filetype];
     return [cur retain];
@@ -67,7 +67,7 @@
 {
     self = [super init];
     if (!self) return self;
-
+    
     interpreter = [source->interpreter retain];
     honourhashbang = source->honourhashbang;
     debug = source->debug;
@@ -81,19 +81,25 @@
     with_terminal = source->with_terminal;
     prefskey = source->prefskey;
     if (prefskey) [prefskey retain];
-
+    
     return self;
 }
 
 - (id)initForFileType: (NSString *)filetype
 {
     FileSettings *defaults;
-
+    
     defaults = [FileSettings getDefaultsForFileType: filetype];
     self = [self initWithFileSettings: defaults];
     origsource = [defaults retain];
     return self;
 }
+
+//- (id)init
+//{
+//    self = [self initForFileType: @"Python Script"];
+//    return self;
+//}
 
 - (id)initForFSDefaultFileType: (NSString *)filetype
 {
@@ -101,10 +107,10 @@
     NSString *filename;
     NSDictionary *dict;
     static NSDictionary *factorySettings;
-
+    
     self = [super init];
     if (!self) return self;
-
+    
     if (factorySettings == NULL) {
         NSBundle *bdl = [NSBundle mainBundle];
         NSString *path = [ bdl pathForResource: @"factorySettings"
@@ -143,18 +149,18 @@
 {
     NSUserDefaults *defaults;
     NSDictionary *dict;
-
+    
     defaults = [NSUserDefaults standardUserDefaults];
     dict = [defaults dictionaryForKey: filetype];
     if (!dict)
         return;
     [self applyValuesFromDict: dict];
 }
-
+    
 - (id)initForDefaultFileType: (NSString *)filetype
 {
     FileSettings *fsdefaults;
-
+    
     fsdefaults = [FileSettings getFactorySettingsForFileType: filetype];
     self = [self initWithFileSettings: fsdefaults];
     if (!self) return self;
@@ -214,7 +220,7 @@
 - (void)applyValuesFromDict: (NSDictionary *)dict
 {
     id value;
-
+    
     value = [dict objectForKey: @"interpreter"];
     if (value) interpreter = [value retain];
     value = [dict objectForKey: @"honourhashbang"];
@@ -241,12 +247,12 @@
 
 - (NSString*)_replaceSingleQuotes: (NSString*)string
 {
-    /* Replace all single-quotes by '"'"', that way shellquoting will
-     * be correct when the result value is delimited  using single quotes.
-     */
-    NSArray* components = [string componentsSeparatedByString:@"'"];
+	/* Replace all single-quotes by '"'"', that way shellquoting will
+	 * be correct when the result value is delimited  using single quotes.
+	 */
+	NSArray* components = [string componentsSeparatedByString:@"'"];
 
-    return [components componentsJoinedByString:@"'\"'\"'"];
+	return [components componentsJoinedByString:@"'\"'\"'"];
 }
 
 - (NSString *)commandLineForScript: (NSString *)script
@@ -259,7 +265,7 @@
 
     script_dir = [script substringToIndex:
 	    [script length]-[[script lastPathComponent] length]];
-
+    
     if (honourhashbang &&
        (fp=fopen([script fileSystemRepresentation], "r")) &&
        fgets(hashbangbuf, sizeof(hashbangbuf), fp) &&
@@ -272,7 +278,7 @@
     }
     if (!cur_interp)
         cur_interp = interpreter;
-
+        
     return [NSString stringWithFormat:
         @"cd '%@' && '%@'%s%s%s%s%s%s %@ '%@' %@ %s",
     	[self _replaceSingleQuotes:script_dir],
@@ -291,7 +297,7 @@
 
 - (NSArray *) interpreters { return interpreters;};
 
-// FileSettingsSource protocol
+// FileSettingsSource protocol 
 - (NSString *) interpreter { return interpreter;};
 - (BOOL) honourhashbang { return honourhashbang; };
 - (BOOL) debug { return debug;};

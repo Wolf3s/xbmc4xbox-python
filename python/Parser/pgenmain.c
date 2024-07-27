@@ -13,6 +13,8 @@
    - check for duplicate definitions of names (instead of fatal err)
 */
 
+#define PGEN
+
 #include "Python.h"
 #include "pgenheaders.h"
 #include "grammar.h"
@@ -67,7 +69,6 @@ main(int argc, char **argv)
         printf("Writing %s ...\n", graminit_h);
     printnonterminals(g, fp);
     fclose(fp);
-    freegrammar(g);
     Py_Exit(0);
     return 0; /* Make gcc -Wall happy */
 }

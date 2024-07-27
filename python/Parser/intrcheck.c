@@ -127,11 +127,7 @@ intcatcher(int sig)
     case 0:
         break;
     case 1:
-#ifdef RISCOS
-        fprintf(stderr, message);
-#else
         write(2, message, strlen(message));
-#endif
         break;
     case 2:
         interrupted = 0;
@@ -172,7 +168,7 @@ void
 PyOS_AfterFork(void)
 {
 #ifdef WITH_THREAD
-    PyThread_ReInitTLS();
     PyEval_ReInitThreads();
+    PyThread_ReInitTLS();
 #endif
 }

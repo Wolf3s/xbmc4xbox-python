@@ -28,12 +28,11 @@ definition of the Python bindings for the DOM and SAX interfaces.
 The XML handling submodules are:
 
 * :mod:`xml.etree.ElementTree`: the ElementTree API, a simple and lightweight
-  XML processor
 
 ..
 
 * :mod:`xml.dom`: the DOM API definition
-* :mod:`xml.dom.minidom`: a minimal DOM implementation
+* :mod:`xml.dom.minidom`: a lightweight DOM implementation
 * :mod:`xml.dom.pulldom`: support for building partial DOM trees
 
 ..
@@ -53,18 +52,16 @@ access local files, to generate network connections to other machines, or
 to or circumvent firewalls. The attacks on XML abuse unfamiliar features
 like inline `DTD`_ (document type definition) with entities.
 
-The following table gives an overview of the known attacks and if the various
-modules are vulnerable to them.
 
-=========================  ==============   ===============   ==============   ==============   ==============
-kind                       sax              etree             minidom          pulldom          xmlrpc
-=========================  ==============   ===============   ==============   ==============   ==============
-billion laughs             **Vulnerable**   **Vulnerable**    **Vulnerable**   **Vulnerable**   **Vulnerable**
-quadratic blowup           **Vulnerable**   **Vulnerable**    **Vulnerable**   **Vulnerable**   **Vulnerable**
-external entity expansion  **Vulnerable**   Safe    (1)       Safe    (2)      **Vulnerable**   Safe    (3)
-`DTD`_ retrieval           **Vulnerable**   Safe              Safe             **Vulnerable**   Safe
-decompression bomb         Safe             Safe              Safe             Safe             **Vulnerable**
-=========================  ==============   ===============   ==============   ==============   ==============
+=========================  ========  =========  =========  ========  =========
+kind                       sax       etree      minidom    pulldom   xmlrpc
+=========================  ========  =========  =========  ========  =========
+billion laughs             **True**  **True**   **True**   **True**  **True**
+quadratic blowup           **True**  **True**   **True**   **True**  **True**
+external entity expansion  **True**  False (1)  False (2)  **True**  False (3)
+DTD retrieval              **True**  False      False      **True**  False
+decompression bomb         False     False      False      False     **True**
+=========================  ========  =========  =========  ========  =========
 
 1. :mod:`xml.etree.ElementTree` doesn't expand external entities and raises a
    ParserError when an entity occurs.
@@ -94,8 +91,8 @@ external entity expansion
   parser retrieves the resource with e.g. HTTP or FTP requests and embeds the
   content into the XML document.
 
-`DTD`_ retrieval
-  Some XML libraries like Python's :mod:`xml.dom.pulldom` retrieve document type
+DTD retrieval
+  Some XML libraries like Python's mod:'xml.dom.pulldom' retrieve document type
   definitions from remote or local locations. The feature has similar
   implications as the external entity expansion issue.
 
@@ -111,26 +108,24 @@ all known attack vectors with examples and references.
 defused packages
 ----------------
 
-These external packages are recommended for any code that parses
-untrusted XML data.
-
 `defusedxml`_ is a pure Python package with modified subclasses of all stdlib
-XML parsers that prevent any potentially malicious operation. The
-package also ships with example exploits and extended documentation on more
+XML parsers that prevent any potentially malicious operation. The courses of
+action are recommended for any server code that parses untrusted XML data. The
+package also ships with example exploits and an extended documentation on more
 XML exploits like xpath injection.
 
-`defusedexpat`_ provides a modified libexpat and patched replacement
+`defusedexpat`_ provides a modified libexpat and patched replacment
 :mod:`pyexpat` extension module with countermeasures against entity expansion
 DoS attacks. Defusedexpat still allows a sane and configurable amount of entity
 expansions. The modifications will be merged into future releases of Python.
 
 The workarounds and modifications are not included in patch releases as they
 break backward compatibility. After all inline DTD and entity expansion are
-well-defined XML features.
+well-definied XML features.
 
 
-.. _defusedxml: https://pypi.org/project/defusedxml/
-.. _defusedexpat: https://pypi.org/project/defusedexpat/
-.. _Billion Laughs: https://en.wikipedia.org/wiki/Billion_laughs
-.. _ZIP bomb: https://en.wikipedia.org/wiki/Zip_bomb
-.. _DTD: https://en.wikipedia.org/wiki/Document_type_definition
+.. _defusedxml: https://pypi.python.org/pypi/defusedxml/
+.. _defusedexpat: https://pypi.python.org/pypi/defusedexpat/
+.. _Billion Laughs: http://en.wikipedia.org/wiki/Billion_laughs
+.. _ZIP bomb: http://en.wikipedia.org/wiki/Zip_bomb
+.. _DTD: http://en.wikipedia.org/wiki/Document_Type_Definition

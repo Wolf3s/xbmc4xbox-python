@@ -13,11 +13,11 @@ Currently, the HOWTOs are:
 .. toctree::
    :maxdepth: 1
 
+   advocacy.rst
    pyporting.rst
    cporting.rst
    curses.rst
    descriptor.rst
-   doanddont.rst
    functional.rst
    logging.rst
    logging-cookbook.rst

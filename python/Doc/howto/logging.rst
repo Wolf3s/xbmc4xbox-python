@@ -63,8 +63,6 @@ The logging functions are named after the level or severity of the events
 they are used to track. The standard levels and their applicability are
 described below (in increasing order of severity):
 
-.. tabularcolumns:: |l|L|
-
 +--------------+---------------------------------------------+
 | Level        | When it's used                              |
 +==============+=============================================+
@@ -103,12 +101,10 @@ A simple example
 A very simple example is::
 
    import logging
-   logging.warning('Watch out!')  # will print a message to the console
-   logging.info('I told you so')  # will not print anything
+   logging.warning('Watch out!') # will print a message to the console
+   logging.info('I told you so') # will not print anything
 
-If you type these lines into a script and run it, you'll see:
-
-.. code-block:: none
+If you type these lines into a script and run it, you'll see::
 
    WARNING:root:Watch out!
 
@@ -124,8 +120,7 @@ Logging to a file
 ^^^^^^^^^^^^^^^^^
 
 A very common situation is that of recording logging events in a file, so let's
-look at that next. Be sure to try the following in a newly-started Python
-interpreter, and don't just continue from the session described above::
+look at that next::
 
    import logging
    logging.basicConfig(filename='example.log',level=logging.DEBUG)
@@ -232,9 +227,7 @@ append the variable data as arguments. For example::
    import logging
    logging.warning('%s before you %s', 'Look', 'leap!')
 
-will display:
-
-.. code-block:: none
+will display::
 
    WARNING:root:Look before you leap!
 
@@ -314,7 +307,7 @@ favourite beverage and carry on.
 If your logging needs are simple, then use the above examples to incorporate
 logging into your own scripts, and if you run into problems or don't
 understand something, please post a question on the comp.lang.python Usenet
-group (available at https://groups.google.com/group/comp.lang.python) and you
+group (available at http://groups.google.com/group/comp.lang.python) and you
 should receive help before too long.
 
 Still here? You can carry on reading the next few sections, which provide a
@@ -363,10 +356,10 @@ root logger's name is printed as 'root' in the logged output.
 
 It is, of course, possible to log messages to different destinations. Support
 is included in the package for writing log messages to files, HTTP GET/POST
-locations, email via SMTP, generic sockets, or OS-specific logging mechanisms
-such as syslog or the Windows NT event log. Destinations are served by
-:dfn:`handler` classes. You can create your own log destination class if you
-have special requirements not met by any of the built-in handler classes.
+locations, email via SMTP, generic sockets, queues, or OS-specific logging
+mechanisms such as syslog or the Windows NT event log. Destinations are served
+by :dfn:`handler` classes. You can create your own log destination class if
+you have special requirements not met by any of the built-in handler classes.
 
 By default, no destination is set for any logging messages. You can specify
 a destination (such as console or file) by using :func:`basicConfig` as in the
@@ -429,10 +422,10 @@ With the logger object configured, the following methods create log messages:
   :meth:`Logger.error`, and :meth:`Logger.critical` all create log records with
   a message and a level that corresponds to their respective method names. The
   message is actually a format string, which may contain the standard string
-  substitution syntax of :const:`%s`, :const:`%d`, :const:`%f`, and so on.  The
+  substitution syntax of ``%s``, ``%d``, ``%f``, and so on.  The
   rest of their arguments is a list of objects that correspond with the
-  substitution fields in the message.  With regard to :const:`**kwargs`, the
-  logging methods care only about a keyword of :const:`exc_info` and use it to
+  substitution fields in the message.  With regard to ``**kwargs``, the
+  logging methods care only about a keyword of ``exc_info`` and use it to
   determine whether to log exception information.
 
 * :meth:`Logger.exception` creates a log message similar to
@@ -464,7 +457,7 @@ ancestor loggers. Because of this, it is unnecessary to define and configure
 handlers for all the loggers an application uses. It is sufficient to
 configure handlers for a top-level logger and create child loggers as needed.
 (You can, however, turn off propagation by setting the *propagate*
-attribute of a logger to ``False``.)
+attribute of a logger to *False*.)
 
 
 .. _handler-basic:
@@ -474,13 +467,12 @@ Handlers
 
 :class:`~logging.Handler` objects are responsible for dispatching the
 appropriate log messages (based on the log messages' severity) to the handler's
-specified destination.  :class:`Logger` objects can add zero or more handler
-objects to themselves with an :meth:`~Logger.addHandler` method.  As an example
-scenario, an application may want to send all log messages to a log file, all
-log messages of error or higher to stdout, and all messages of critical to an
-email address. This scenario requires three individual handlers where each
-handler is responsible for sending messages of a specific severity to a specific
-location.
+specified destination.  Logger objects can add zero or more handler objects to
+themselves with an :func:`addHandler` method.  As an example scenario, an
+application may want to send all log messages to a log file, all log messages
+of error or higher to stdout, and all messages of critical to an email address.
+This scenario requires three individual handlers where each handler is
+responsible for sending messages of a specific severity to a specific location.
 
 The standard library includes quite a few handler types (see
 :ref:`useful-handlers`); the tutorials use mainly :class:`StreamHandler` and
@@ -491,17 +483,16 @@ themselves with.  The only handler methods that seem relevant for application
 developers who are using the built-in handler objects (that is, not creating
 custom handlers) are the following configuration methods:
 
-* The :meth:`~Handler.setLevel` method, just as in logger objects, specifies the
+* The :meth:`Handler.setLevel` method, just as in logger objects, specifies the
   lowest severity that will be dispatched to the appropriate destination.  Why
   are there two :func:`setLevel` methods?  The level set in the logger
   determines which severity of messages it will pass to its handlers.  The level
   set in each handler determines which messages that handler will send on.
 
-* :meth:`~Handler.setFormatter` selects a Formatter object for this handler to
-  use.
+* :func:`setFormatter` selects a Formatter object for this handler to use.
 
-* :meth:`~Handler.addFilter` and :meth:`~Handler.removeFilter` respectively
-  configure and deconfigure filter objects on handlers.
+* :func:`addFilter` and :func:`removeFilter` respectively configure and
+  deconfigure filter objects on handlers.
 
 Application code should not directly instantiate and use instances of
 :class:`Handler`.  Instead, the :class:`Handler` class is a base class that
@@ -515,20 +506,29 @@ Formatters
 Formatter objects configure the final order, structure, and contents of the log
 message.  Unlike the base :class:`logging.Handler` class, application code may
 instantiate formatter classes, although you could likely subclass the formatter
-if your application needs special behavior.  The constructor takes two
-optional arguments -- a message format string and a date format string.
+if your application needs special behavior.  The constructor takes three
+optional arguments -- a message format string, a date format string and a style
+indicator.
 
-.. method:: logging.Formatter.__init__(fmt=None, datefmt=None)
+.. method:: logging.Formatter.__init__(fmt=None, datefmt=None, style='%')
 
 If there is no message format string, the default is to use the
 raw message.  If there is no date format string, the default date format is::
 
     %Y-%m-%d %H:%M:%S
 
-with the milliseconds tacked on at the end.
+with the milliseconds tacked on at the end. The ``style`` is one of `%`, '{'
+or '$'. If one of these is not specified, then '%' will be used.
 
-The message format string uses ``%(<dictionary key>)s`` styled string
-substitution; the possible keys are documented in :ref:`logrecord-attributes`.
+If the ``style`` is '%', the message format string uses
+``%(<dictionary key>)s`` styled string substitution; the possible keys are
+documented in :ref:`logrecord-attributes`. If the style is '{', the message
+format string is assumed to be compatible with :meth:`str.format` (using
+keyword arguments), while if the style is '$' then the message format string
+should conform to what is expected by :meth:`string.Template.substitute`.
+
+.. versionchanged:: 3.2
+   Added the ``style`` parameter.
 
 The following message format string will log the time in a human-readable
 format, the severity of the message, and the contents of the message, in that
@@ -589,9 +589,7 @@ logger, a console handler, and a simple formatter using Python code::
     logger.error('error message')
     logger.critical('critical message')
 
-Running this module from the command line produces the following output:
-
-.. code-block:: shell-session
+Running this module from the command line produces the following output::
 
     $ python simple_logging_module.py
     2005-03-19 15:10:26,618 - simple_example - DEBUG - debug message
@@ -650,9 +648,7 @@ Here is the logging.conf file::
     format=%(asctime)s - %(name)s - %(levelname)s - %(message)s
     datefmt=
 
-The output is nearly identical to that of the non-config-file-based example:
-
-.. code-block:: shell-session
+The output is nearly identical to that of the non-config-file-based example::
 
     $ python simple_logging_config.py
     2005-03-19 15:38:55,977 - simpleExample - DEBUG - debug message
@@ -680,6 +676,7 @@ noncoders to easily modify the logging properties.
    which may not be what you want - in which case, provide the key
    explicitly with a value of ``False``.
 
+
 .. currentmodule:: logging
 
 Note that the class names referenced in config files need to be either relative
@@ -690,7 +687,7 @@ import mechanisms. Thus, you could use either
 and module ``mymodule``, where ``mypackage`` is available on the Python import
 path).
 
-In Python 2.7, a new means of configuring logging has been introduced, using
+In Python 3.2, a new means of configuring logging has been introduced, using
 dictionaries to hold configuration information. This provides a superset of the
 functionality of the config-file-based approach outlined above, and is the
 recommended configuration method for new applications and deployments. Because
@@ -735,13 +732,26 @@ where a logging event needs to be output, but no handlers can be found to
 output the event. The behaviour of the logging package in these
 circumstances is dependent on the Python version.
 
-For Python 2.x, the behaviour is as follows:
+For versions of Python prior to 3.2, the behaviour is as follows:
 
-* If *logging.raiseExceptions* is ``False`` (production mode), the event is
+* If *logging.raiseExceptions* is *False* (production mode), the event is
   silently dropped.
 
-* If *logging.raiseExceptions* is ``True`` (development mode), a message
+* If *logging.raiseExceptions* is *True* (development mode), a message
   'No handlers could be found for logger X.Y.Z' is printed once.
+
+In Python 3.2 and later, the behaviour is as follows:
+
+* The event is output using a 'handler of last resort', stored in
+  ``logging.lastResort``. This internal handler is not associated with any
+  logger, and acts like a :class:`~logging.StreamHandler` which writes the
+  event description message to the current value of ``sys.stderr`` (therefore
+  respecting any redirections which may be in effect). No formatting is
+  done on the message - just the bare event description message is printed.
+  The handler's level is set to ``WARNING``, so all events at this and
+  greater severities will be output.
+
+To obtain the pre-3.2 behaviour, ``logging.lastResort`` can be set to *None*.
 
 .. _library-config:
 
@@ -751,11 +761,12 @@ Configuring Logging for a Library
 When developing a library which uses logging, you should take care to
 document how the library uses logging - for example, the names of loggers
 used. Some consideration also needs to be given to its logging configuration.
-If the using application does not configure logging, and library code makes
-logging calls, then (as described in the previous section) an error message
-will be printed to ``sys.stderr``.
+If the using application does not use logging, and library code makes logging
+calls, then (as described in the previous section) events of severity
+``WARNING`` and greater will be printed to ``sys.stderr``. This is regarded as
+the best default behaviour.
 
-If for some reason you *don't* want this message printed in the absence of
+If for some reason you *don't* want these messages printed in the absence of
 any logging configuration, you can attach a do-nothing handler to the top-level
 logger for your library. This avoids the message being printed, since a handler
 will be always be found for the library's events: it just doesn't produce any
@@ -765,9 +776,9 @@ configured then logging calls made in library code will send output to those
 handlers, as normal.
 
 A do-nothing handler is included in the logging package:
-:class:`~logging.NullHandler` (since Python 2.7). An instance of this handler
+:class:`~logging.NullHandler` (since Python 3.1). An instance of this handler
 could be added to the top-level logger of the logging namespace used by the
-library (*if* you want to prevent an error message being output to
+library (*if* you want to prevent your library's logged events being output to
 ``sys.stderr`` in the absence of logging configuration). If all logging by a
 library *foo* is done using loggers with names matching 'foo.x', 'foo.x.y',
 etc. then the code::
@@ -910,14 +921,20 @@ provided:
    name. This handler is only useful on Unix-like systems; Windows does not
    support the underlying mechanism used.
 
+#. :class:`~handlers.QueueHandler` instances send messages to a queue, such as
+   those implemented in the :mod:`queue` or :mod:`multiprocessing` modules.
+
 #. :class:`NullHandler` instances do nothing with error messages. They are used
    by library developers who want to use logging, but want to avoid the 'No
    handlers could be found for logger XXX' message which can be displayed if
    the library user has not configured logging. See :ref:`library-config` for
    more information.
 
-.. versionadded:: 2.7
+.. versionadded:: 3.1
    The :class:`NullHandler` class.
+
+.. versionadded:: 3.2
+   The :class:`~handlers.QueueHandler` class.
 
 The :class:`NullHandler`, :class:`StreamHandler` and :class:`FileHandler`
 classes are defined in the core logging package. The other handlers are
@@ -929,16 +946,16 @@ Logged messages are formatted for presentation through instances of the
 use with the % operator and a dictionary.
 
 For formatting multiple messages in a batch, instances of
-:class:`~handlers.BufferingFormatter` can be used. In addition to the format
-string (which is applied to each message in the batch), there is provision for
-header and trailer format strings.
+:class:`BufferingFormatter` can be used. In addition to the format string (which
+is applied to each message in the batch), there is provision for header and
+trailer format strings.
 
 When filtering based on logger level and/or handler level is not enough,
 instances of :class:`Filter` can be added to both :class:`Logger` and
-:class:`Handler` instances (through their :meth:`~Handler.addFilter` method).
-Before deciding to process a message further, both loggers and handlers consult
-all their filters for permission. If any filter returns a false value, the
-message is not processed further.
+:class:`Handler` instances (through their :meth:`addFilter` method). Before
+deciding to process a message further, both loggers and handlers consult all
+their filters for permission. If any filter returns a false value, the message
+is not processed further.
 
 The basic :class:`Filter` functionality allows filtering by specific logger
 name. If this feature is used, messages sent to the named logger and its
@@ -956,20 +973,19 @@ in production. This is so that errors which occur while handling logging events
 cause the application using logging to terminate prematurely.
 
 :class:`SystemExit` and :class:`KeyboardInterrupt` exceptions are never
-swallowed. Other exceptions which occur during the :meth:`~Handler.emit` method
-of a :class:`Handler` subclass are passed to its :meth:`~Handler.handleError`
-method.
+swallowed. Other exceptions which occur during the :meth:`emit` method of a
+:class:`Handler` subclass are passed to its :meth:`handleError` method.
 
-The default implementation of :meth:`~Handler.handleError` in :class:`Handler`
-checks to see if a module-level variable, :data:`raiseExceptions`, is set. If
-set, a traceback is printed to :data:`sys.stderr`. If not set, the exception is
-swallowed.
+The default implementation of :meth:`handleError` in :class:`Handler` checks
+to see if a module-level variable, :data:`raiseExceptions`, is set. If set, a
+traceback is printed to :data:`sys.stderr`. If not set, the exception is swallowed.
 
 .. note:: The default value of :data:`raiseExceptions` is ``True``. This is
    because during development, you typically want to be notified of any
    exceptions that occur. It's advised that you set :data:`raiseExceptions` to
    ``False`` for production usage.
 
+.. currentmodule:: logging
 
 .. _arbitrary-object-messages:
 
@@ -979,11 +995,11 @@ Using arbitrary objects as messages
 In the preceding sections and examples, it has been assumed that the message
 passed when logging the event is a string. However, this is not the only
 possibility. You can pass an arbitrary object as a message, and its
-:meth:`~object.__str__` method will be called when the logging system needs to
-convert it to a string representation. In fact, if you want to, you can avoid
+:meth:`__str__` method will be called when the logging system needs to convert
+it to a string representation. In fact, if you want to, you can avoid
 computing a string representation altogether - for example, the
-:class:`~handlers.SocketHandler` emits an event by pickling it and sending it
-over the wire.
+:class:`SocketHandler` emits an event by pickling it and sending it over the
+wire.
 
 
 Optimization
@@ -992,10 +1008,9 @@ Optimization
 Formatting of message arguments is deferred until it cannot be avoided.
 However, computing the arguments passed to the logging method can also be
 expensive, and you may want to avoid doing it if the logger will just throw
-away your event. To decide what to do, you can call the
-:meth:`~Logger.isEnabledFor` method which takes a level argument and returns
-true if the event would be created by the Logger for that level of call.
-You can write code like this::
+away your event. To decide what to do, you can call the :meth:`isEnabledFor`
+method which takes a level argument and returns true if the event would be
+created by the Logger for that level of call. You can write code like this::
 
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug('Message with %s, %s', expensive_func1(),
@@ -1003,15 +1018,6 @@ You can write code like this::
 
 so that if the logger's threshold is set above ``DEBUG``, the calls to
 :func:`expensive_func1` and :func:`expensive_func2` are never made.
-
-.. note:: In some cases, :meth:`~Logger.isEnabledFor` can itself be more
-   expensive than you'd like (e.g. for deeply nested loggers where an explicit
-   level is only set high up in the logger hierarchy). In such cases (or if you
-   want to avoid calling a method in tight loops), you can cache the result of a
-   call to :meth:`~Logger.isEnabledFor` in a local or instance variable, and use
-   that instead of calling the method each time. Such a cached value would only
-   need to be recomputed when the logging configuration changes dynamically
-   while the application is running (which is not all that common).
 
 There are other optimizations which can be made for specific applications which
 need more precise control over what logging information is collected. Here's a
@@ -1022,11 +1028,6 @@ need:
 | What you don't want to collect                | How to avoid collecting it             |
 +===============================================+========================================+
 | Information about where calls were made from. | Set ``logging._srcfile`` to ``None``.  |
-|                                               | This avoids calling                    |
-|                                               | :func:`sys._getframe`, which may help  |
-|                                               | to speed up your code in environments  |
-|                                               | like PyPy (which can't speed up code   |
-|                                               | that uses :func:`sys._getframe`).      |
 +-----------------------------------------------+----------------------------------------+
 | Threading information.                        | Set ``logging.logThreads`` to ``0``.   |
 +-----------------------------------------------+----------------------------------------+
@@ -1049,3 +1050,4 @@ take up any memory.
       Useful handlers included with the logging module.
 
    :ref:`A logging cookbook <logging-cookbook>`
+
