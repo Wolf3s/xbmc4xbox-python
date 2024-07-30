@@ -89,9 +89,8 @@ Local naming conventions:
 # pragma weak inet_aton
 #endif
 
-#ifdef _XBOX
-#include <xtl.h>
-#include <winsockx.h>
+#ifdef _WIN32
+#include <winsock2.h>
 #endif
 #include "Python.h"
 #include "structmember.h"
@@ -3200,7 +3199,7 @@ static PyTypeObject sock_type = {
 static PyObject *
 socket_gethostname(PyObject *self, PyObject *unused)
 {
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS) && !defined(_XBOX)
     /* Don't use winsock's gethostname, as this returns the ANSI
        version of the hostname, whereas we need a Unicode string.
        Otherwise, gethostname apparently also returns the DNS name. */
