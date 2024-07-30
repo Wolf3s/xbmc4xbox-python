@@ -59,7 +59,9 @@ extern PyObject* PyInit__subprocess(void);
 extern PyObject* PyInit__lsprof(void);
 extern PyObject* PyInit__ast(void);
 extern PyObject* PyInit__io(void);
+#ifdef _XBMC /*Activate for XBMC*/
 extern PyObject* PyInit__pickle(void);
+#endif
 extern PyObject* PyInit_atexit(void);
 extern PyObject* _PyWarnings_Init(void);
 extern PyObject* PyInit__string(void);
@@ -162,8 +164,10 @@ struct _inittab _PyImport_Inittab[] = {
     {"_string", PyInit__string},
 
     {"_io", PyInit__io},
+#ifdef _XBMC /*Activate for XBMC.*/
     {"_pickle", PyInit__pickle},
-    {"atexit", PyInit_atexit},
+#endif
+	{"atexit", PyInit_atexit},
 
     /* Sentinel */
     {0, 0}

@@ -2783,9 +2783,10 @@ generic_hash(unsigned char *data, int len)
 {
     register unsigned char *p;
     register Py_hash_t x;
-
+#ifdef Py_DEBUG /*XBOX*/
     assert(_Py_HashSecret_Initialized);
-    p = (unsigned char *) data;
+#endif
+	p = (unsigned char *) data;
     x = _Py_HashSecret.prefix;
     x ^= *p << 7;
     while (--len >= 0)
