@@ -89,9 +89,8 @@ Local naming conventions:
 # pragma weak inet_aton
 #endif
 
-#ifdef _XBOX
-#include <xtl.h>
-#include <winsockx.h>
+#ifdef _WIN32
+#include <winsock2.h>
 #endif
 #include "Python.h"
 #include "structmember.h"
@@ -673,9 +672,11 @@ internal_select_ex(PySocketSockObject *s, int writing, double interval)
     if (s->sock_fd < 0)
         return 0;
 
+#ifndef _XBMC
     /* Handling this condition here simplifies the select loops */
     if (interval < 0.0)
         return 1;
+#endif
 
     /* Prefer poll, if available, since you can poll() any fd
      * which can't be done with select(). */
@@ -688,7 +689,11 @@ internal_select_ex(PySocketSockObject *s, int writing, double interval)
         pollfd.events = writing ? POLLOUT : POLLIN;
 
         /* s->sock_timeout is in seconds, timeout in ms */
+#ifdef _XBMC
+		timeout = (int)(s->sock_timeout * 1000 + 0.5);
+#else
         timeout = (int)(interval * 1000 + 0.5);
+#endif
         n = poll(&pollfd, 1, timeout);
     }
 #else
@@ -696,8 +701,13 @@ internal_select_ex(PySocketSockObject *s, int writing, double interval)
         /* Construct the arguments to select */
         fd_set fds;
         struct timeval tv;
+#ifdef _XBMC
+        tv.tv_sec = (int)s->sock_timeout ;
+        tv.tv_usec = (int)((s->sock_timeout  - tv.tv_sec) * 1e6);
+#else
         tv.tv_sec = (int)interval;
         tv.tv_usec = (int)((interval - tv.tv_sec) * 1e6);
+#endif
         FD_ZERO(&fds);
         FD_SET(s->sock_fd, &fds);
 
@@ -813,7 +823,11 @@ new_sockobject(SOCKET_T fd, int family, int type, int proto)
 /* Lock to allow python interpreter to continue, but only allow one
    thread to be in gethostbyname or getaddrinfo */
 #if defined(USE_GETHOSTBYNAME_LOCK) || defined(USE_GETADDRINFO_LOCK)
+#ifdef _XBMC
+PyThread_type_lock netdb_lock;
+#else
 static PyThread_type_lock netdb_lock;
+#endif
 #endif
 
 
@@ -1694,10 +1708,15 @@ sock_accept(PySocketSockObject *s)
 
     if (!IS_SELECTABLE(s))
         return select_error();
-
+#ifndef _XBMC
     BEGIN_SELECT_LOOP(s)
+#endif
     Py_BEGIN_ALLOW_THREADS
+#ifdef _XBMC
+	timeout = internal_select(s, 0);
+#else
     timeout = internal_select_ex(s, 0, interval);
+#endif
     if (!timeout) {
         newfd = accept(s->sock_fd, SAS2SA(&addrbuf), &addrlen);
     }
@@ -1707,7 +1726,9 @@ sock_accept(PySocketSockObject *s)
         PyErr_SetString(socket_timeout, "timed out");
         return NULL;
     }
+#ifndef _XBMC
     END_SELECT_LOOP(s)
+#endif
 
     if (newfd == INVALID_SOCKET)
         return s->errorhandler();
@@ -1746,7 +1767,11 @@ For IP sockets, the address info is a pair (hostaddr, port).");
 static PyObject *
 sock_setblocking(PySocketSockObject *s, PyObject *arg)
 {
+#ifdef _XBMC
+    int block;
+#else
     long block;
+#endif
 
     block = PyLong_AsLong(arg);
     if (block == -1 && PyErr_Occurred())
@@ -2282,9 +2307,15 @@ sock_recv_guts(PySocketSockObject *s, char* cbuf, Py_ssize_t len, int flags)
     }
 
 #ifndef __VMS
+#ifndef _XBMC
     BEGIN_SELECT_LOOP(s)
+#endif
     Py_BEGIN_ALLOW_THREADS
+#ifdef _XBMC
+    timeout = internal_select_ex(s, 0);
+#else
     timeout = internal_select_ex(s, 0, interval);
+#endif
     if (!timeout)
         outlen = recv(s->sock_fd, cbuf, len, flags);
     Py_END_ALLOW_THREADS
@@ -2293,7 +2324,9 @@ sock_recv_guts(PySocketSockObject *s, char* cbuf, Py_ssize_t len, int flags)
         PyErr_SetString(socket_timeout, "timed out");
         return -1;
     }
+#ifndef _XBMC
     END_SELECT_LOOP(s)
+#endif
     if (outlen < 0) {
         /* Note: the call to errorhandler() ALWAYS indirectly returned
            NULL, so ignore its return value */
@@ -2314,10 +2347,15 @@ sock_recv_guts(PySocketSockObject *s, char* cbuf, Py_ssize_t len, int flags)
         else {
             segment = remaining;
         }
-
+#ifndef _XBMC
         BEGIN_SELECT_LOOP(s)
-        Py_BEGIN_ALLOW_THREADS
+#endif        
+		Py_BEGIN_ALLOW_THREADS
+#ifdef _XBMC
+        timeout = internal_select_(s, 0);
+#else
         timeout = internal_select_ex(s, 0, interval);
+#endif
         if (!timeout)
             nread = recv(s->sock_fd, read_buf, segment, flags);
         Py_END_ALLOW_THREADS
@@ -2325,8 +2363,9 @@ sock_recv_guts(PySocketSockObject *s, char* cbuf, Py_ssize_t len, int flags)
             PyErr_SetString(socket_timeout, "timed out");
             return -1;
         }
+#ifndef _XBMC
         END_SELECT_LOOP(s)
-
+#endif
         if (nread < 0) {
             s->errorhandler();
             return -1;
@@ -2486,11 +2525,16 @@ sock_recvfrom_guts(PySocketSockObject *s, char* cbuf, Py_ssize_t len, int flags,
         select_error();
         return -1;
     }
-
+#ifndef _XBMC
     BEGIN_SELECT_LOOP(s)
+#endif
     Py_BEGIN_ALLOW_THREADS
     memset(&addrbuf, 0, addrlen);
+#ifdef XBMC
+    timeout = internal_select(s, 0);
+#else
     timeout = internal_select_ex(s, 0, interval);
+#endif
     if (!timeout) {
 #ifndef MS_WINDOWS
 #if defined(PYOS_OS2) && !defined(PYCC_GCC)
@@ -2511,7 +2555,9 @@ sock_recvfrom_guts(PySocketSockObject *s, char* cbuf, Py_ssize_t len, int flags,
         PyErr_SetString(socket_timeout, "timed out");
         return -1;
     }
+#ifndef _XBMC
     END_SELECT_LOOP(s)
+#endif
     if (n < 0) {
         s->errorhandler();
         return -1;
@@ -2653,10 +2699,15 @@ sock_send(PySocketSockObject *s, PyObject *args)
     }
     buf = pbuf.buf;
     len = pbuf.len;
-
+#ifndef _XBMC
     BEGIN_SELECT_LOOP(s)
+#endif
     Py_BEGIN_ALLOW_THREADS
+#ifdef _XBMC
+    timeout = internal_select(s, 1);
+#else
     timeout = internal_select_ex(s, 1, interval);
+#endif
     if (!timeout)
 #ifdef __VMS
         n = sendsegmented(s->sock_fd, buf, len, flags);
@@ -2669,7 +2720,9 @@ sock_send(PySocketSockObject *s, PyObject *args)
         PyErr_SetString(socket_timeout, "timed out");
         return NULL;
     }
+#ifndef _XBMC
     END_SELECT_LOOP(s)
+#endif
 
     PyBuffer_Release(&pbuf);
     if (n < 0)
@@ -2717,8 +2770,13 @@ sock_sendall(PySocketSockObject *s, PyObject *args)
 #endif
         }
         Py_END_ALLOW_THREADS
+#ifdef _XBMC
+        PyBuffer_Release(&pbuf);
+#endif		
         if (timeout == 1) {
+#ifndef _XBMC
             PyBuffer_Release(&pbuf);
+#endif
             PyErr_SetString(socket_timeout, "timed out");
             return NULL;
         }
@@ -2741,7 +2799,9 @@ sock_sendall(PySocketSockObject *s, PyObject *args)
         buf += n;
         len -= n;
     } while (len > 0);
+#ifndef _XBMC
     PyBuffer_Release(&pbuf);
+#endif
 
     if (n < 0)
         return s->errorhandler();
@@ -2802,20 +2862,35 @@ sock_sendto(PySocketSockObject *s, PyObject *args)
         return NULL;
     }
 
+#ifndef _XBMC
     BEGIN_SELECT_LOOP(s)
+#endif
     Py_BEGIN_ALLOW_THREADS
+#ifdef XBMC
+	timeout = internal_select(s, 0);
+#else
     timeout = internal_select_ex(s, 1, interval);
+#endif
     if (!timeout)
         n = sendto(s->sock_fd, buf, len, flags, SAS2SA(&addrbuf), addrlen);
     Py_END_ALLOW_THREADS
 
-    if (timeout == 1) {
+#ifdef _XBMC
         PyBuffer_Release(&pbuf);
+#endif
+
+    if (timeout == 1) {
+#ifndef _XBMC
+        PyBuffer_Release(&pbuf);
+#endif
         PyErr_SetString(socket_timeout, "timed out");
         return NULL;
     }
+#ifndef _XBMC
     END_SELECT_LOOP(s)
     PyBuffer_Release(&pbuf);
+#endif
+
     if (n < 0)
         return s->errorhandler();
     return PyLong_FromSsize_t(n);
@@ -3124,7 +3199,7 @@ static PyTypeObject sock_type = {
 static PyObject *
 socket_gethostname(PyObject *self, PyObject *unused)
 {
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS) && !defined(_XBOX)
     /* Don't use winsock's gethostname, as this returns the ANSI
        version of the hostname, whereas we need a Unicode string.
        Otherwise, gethostname apparently also returns the DNS name. */
@@ -4143,7 +4218,11 @@ socket_getnameinfo(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(sa, "si|II",
                           &hostp, &port, &flowinfo, &scope_id))
         return NULL;
+#ifdef _XBMC
+	if (flowinfo < 0 || flowinfo > 0xfffff) {
+#else
     if (flowinfo > 0xfffff) {
+#endif
         PyErr_SetString(PyExc_OverflowError,
                         "getsockaddrarg: flowinfo must be 0-1048575.");
         return NULL;

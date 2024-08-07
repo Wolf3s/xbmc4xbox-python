@@ -59,7 +59,9 @@ extern PyObject* PyInit__subprocess(void);
 extern PyObject* PyInit__lsprof(void);
 extern PyObject* PyInit__ast(void);
 extern PyObject* PyInit__io(void);
+#ifdef _XBMC /*Activate for XBMC*/
 extern PyObject* PyInit__pickle(void);
+#endif
 extern PyObject* PyInit_atexit(void);
 extern PyObject* _PyWarnings_Init(void);
 extern PyObject* PyInit__string(void);
@@ -76,7 +78,9 @@ struct _inittab _PyImport_Inittab[] = {
     {"_ast", PyInit__ast},
 #ifdef MS_WINDOWS
 #ifndef MS_WINI64
+#ifndef _XBOX
     {"audioop", PyInit_audioop},
+#endif
 #endif
 #endif
     {"binascii", PyInit_binascii},
@@ -96,11 +100,15 @@ struct _inittab _PyImport_Inittab[] = {
     {"_thread", PyInit__thread},
 #endif
 #ifdef WIN32
+#ifndef _XBOX
     {"msvcrt", PyInit_msvcrt},
+#endif
     {"_locale", PyInit__locale},
 #endif
+#ifndef _XBOX
     /* XXX Should _subprocess go in a WIN32 block?  not WIN64? */
     {"_subprocess", PyInit__subprocess},
+#endif
 
     {"_codecs", PyInit__codecs},
     {"_weakref", PyInit__weakref},
@@ -111,11 +119,15 @@ struct _inittab _PyImport_Inittab[] = {
     {"itertools", PyInit_itertools},
     {"_collections", PyInit__collections},
     {"_symtable", PyInit__symtable},
+#ifndef _XBOX
     {"mmap", PyInit_mmap},
+#endif
     {"_csv", PyInit__csv},
     {"_sre", PyInit__sre},
     {"parser", PyInit_parser},
+#ifndef _XBOX
     {"winreg", PyInit_winreg},
+#endif
     {"_struct", PyInit__struct},
     {"_datetime", PyInit__datetime},
     {"_functools", PyInit__functools},
@@ -152,8 +164,10 @@ struct _inittab _PyImport_Inittab[] = {
     {"_string", PyInit__string},
 
     {"_io", PyInit__io},
+#ifdef _XBMC /*Activate for XBMC.*/
     {"_pickle", PyInit__pickle},
-    {"atexit", PyInit_atexit},
+#endif
+	{"atexit", PyInit_atexit},
 
     /* Sentinel */
     {0, 0}

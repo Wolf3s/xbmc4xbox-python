@@ -147,13 +147,15 @@ do { \
 #include <windows.h>
 
 #define MUTEX_T CRITICAL_SECTION
+#ifdef _XBOX
+#define MUTEX_INIT(mut) (mut)/* TODO: */
+#else
 #define MUTEX_INIT(mut) do { \
     if (!(InitializeCriticalSectionAndSpinCount(&(mut), 4000))) \
         Py_FatalError("CreateMutex(" #mut ") failed"); \
 } while (0)
-#define MUTEX_FINI(mut) \
+#endif
     DeleteCriticalSection(&(mut))
-#define MUTEX_LOCK(mut) \
     EnterCriticalSection(&(mut))
 #define MUTEX_UNLOCK(mut) \
     LeaveCriticalSection(&(mut))

@@ -3,9 +3,8 @@
    Under Win32, select only exists for sockets, and sockets may
    have any value except INVALID_SOCKET.
 */
-#ifdef _XBOX
-#include <xtl.h>
-#include <winsockx.h>
+#ifdef _WIN32
+#include <winsock2.h>
 #endif
 #include "Python.h"
 #include <structmember.h>

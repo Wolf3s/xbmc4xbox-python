@@ -12,7 +12,11 @@
 
 #include "Python.h"
 
+#ifdef _XBOX
+#include <time.h>
+#else
 #include <sys/time.h>
+#endif
 #include <sys/types.h>
 #include <rpc/rpc.h>
 #include <rpcsvc/yp_prot.h>

@@ -620,7 +620,7 @@ win32_get_reparse_tag(HANDLE reparse_point_handle, ULONG *reparse_tag)
     char target_buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
     REPARSE_DATA_BUFFER *rdb = (REPARSE_DATA_BUFFER *)target_buffer;
     DWORD n_bytes_returned;
-
+#ifndef _XBOX
     if (0 == DeviceIoControl(
         reparse_point_handle,
         FSCTL_GET_REPARSE_POINT,
@@ -629,6 +629,7 @@ win32_get_reparse_tag(HANDLE reparse_point_handle, ULONG *reparse_tag)
         &n_bytes_returned,
         NULL)) /* we're not using OVERLAPPED_IO */
         return FALSE;
+#endif
 
     if (reparse_tag)
         *reparse_tag = rdb->ReparseTag;
@@ -792,7 +793,7 @@ win32_error(char* function, const char* filename)
         return PyErr_SetFromWindowsErr(errno);
 }
 
-#ifndef _XBOX
+
 static PyObject *
 win32_error_unicode(char* function, Py_UNICODE* filename)
 {
@@ -807,7 +808,8 @@ win32_error_unicode(char* function, Py_UNICODE* filename)
 static int
 convert_to_unicode(PyObject **param)
 {
-    if (PyUnicode_CheckExact(*param))
+#ifndef _XBOX
+	if (PyUnicode_CheckExact(*param))
         Py_INCREF(*param);
     else if (PyUnicode_Check(*param))
         /* For a Unicode subtype that's not a Unicode object,
@@ -819,8 +821,8 @@ convert_to_unicode(PyObject **param)
                                              Py_FileSystemDefaultEncoding,
                                              "strict");
     return (*param) != NULL;
-}
 #endif
+}
 #endif /* MS_WINDOWS */
 
 #if defined(PYOS_OS2)
@@ -1866,6 +1868,67 @@ _pystat_fromstructstat(STRUCT_STAT *st)
     return v;
 }
 
+#ifdef _XBOX
+
+/* IsUNCRoot -- test whether the supplied path is of the form \\SERVER\SHARE\,
+   where / can be used in place of \ and the trailing slash is optional.
+   Both SERVER and SHARE must have at least one character.
+*/
+
+#define ISSLASHA(c) ((c) == '\\' || (c) == '/')
+#define ISSLASHW(c) ((c) == L'\\' || (c) == L'/')
+#ifndef ARRAYSIZE
+#define ARRAYSIZE(a) (sizeof(a) / sizeof(a[0]))
+#endif
+
+static BOOL
+IsUNCRootA(char *path, int pathlen)
+{
+    #define ISSLASH ISSLASHA
+
+    int i, share;
+
+    if (pathlen < 5 || !ISSLASH(path[0]) || !ISSLASH(path[1]))
+        /* minimum UNCRoot is \\x\y */
+        return FALSE;
+    for (i = 2; i < pathlen ; i++)
+        if (ISSLASH(path[i])) break;
+    if (i == 2 || i == pathlen)
+        /* do not allow \\\SHARE or \\SERVER */
+        return FALSE;
+    share = i+1;
+    for (i = share; i < pathlen; i++)
+        if (ISSLASH(path[i])) break;
+    return (i != share && (i == pathlen || i == pathlen-1));
+
+    #undef ISSLASH
+}
+
+static BOOL
+IsUNCRootW(Py_UNICODE *path, int pathlen)
+{
+    #define ISSLASH ISSLASHW
+
+    int i, share;
+
+    if (pathlen < 5 || !ISSLASH(path[0]) || !ISSLASH(path[1]))
+        /* minimum UNCRoot is \\x\y */
+        return FALSE;
+    for (i = 2; i < pathlen ; i++)
+        if (ISSLASH(path[i])) break;
+    if (i == 2 || i == pathlen)
+        /* do not allow \\\SHARE or \\SERVER */
+        return FALSE;
+    share = i+1;
+    for (i = share; i < pathlen; i++)
+        if (ISSLASH(path[i])) break;
+    return (i != share && (i == pathlen || i == pathlen-1));
+
+    #undef ISSLASH
+}
+
+#endif
+
 static PyObject *
 posix_do_stat(PyObject *self, PyObject *args,
               char *format,
@@ -1915,7 +1978,7 @@ posix_do_stat(PyObject *self, PyObject *args,
 	pathlen = strlen(path);
 	/* the library call can blow up if the file name is too long! */
 	if (pathlen > MAX_PATH) {
-		PyMem_Free(pathfree);
+		PyMem_Free(path);
 		errno = ENAMETOOLONG;
 		return posix_error();
 	}
@@ -2525,7 +2588,7 @@ posix_link(PyObject *self, PyObject *args)
 }
 #endif /* HAVE_LINK */
 
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS) && !defined(_XBOX)
 PyDoc_STRVAR(win32_link__doc__,
 "link(src, dst)\n\n\
 Create a hard link to a file.");
@@ -3156,7 +3219,7 @@ posix_mkdir(PyObject *self, PyObject *args)
         return NULL;
     path = PyBytes_AsString(opath);
     Py_BEGIN_ALLOW_THREADS
-#if ( defined(__WATCOMC__) || defined(PYCC_VACPP) ) && !defined(__QNX__)
+#if ( defined(__WATCOMC__) || defined(_MSC_VER) || defined(PYCC_VACPP) ) && !defined(__QNX__) /* XBOX */
     res = mkdir(path);
 #else
     res = mkdir(path, mode);
@@ -5369,7 +5432,7 @@ posix_symlink(PyObject *self, PyObject *args)
 }
 #endif /* HAVE_SYMLINK */
 
-#if !defined(HAVE_READLINK) && defined(MS_WINDOWS)
+#if !defined(HAVE_READLINK) && !defined(_XBOX) && defined(MS_WINDOWS)
 
 PyDoc_STRVAR(win_readlink__doc__,
 "readlink(path) -> path\n\n\
@@ -5445,7 +5508,7 @@ win_readlink(PyObject *self, PyObject *args)
 
 #endif /* !defined(HAVE_READLINK) && defined(MS_WINDOWS) */
 
-#if defined(HAVE_SYMLINK) && defined(MS_WINDOWS)
+#if defined(HAVE_SYMLINK) && defined(MS_WINDOWS) && !defined(_XBOX)
 
 /* Grab CreateSymbolicLinkW dynamically from kernel32 */
 static int has_CreateSymbolicLinkW = 0;
@@ -6195,7 +6258,7 @@ static PyObject *posix_putenv_garbage;
 static PyObject *
 posix_putenv(PyObject *self, PyObject *args)
 {
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS) && !defined(_XBOX)
     wchar_t *s1, *s2;
     wchar_t *newenv;
 #else
@@ -7962,7 +8025,7 @@ static PyMethodDef posix_methods[] = {
 #ifdef HAVE_READLINK
     {"readlink",        posix_readlink, METH_VARARGS, posix_readlink__doc__},
 #endif /* HAVE_READLINK */
-#if !defined(HAVE_READLINK) && defined(MS_WINDOWS)
+#if !defined(HAVE_READLINK) && defined(MS_WINDOWS) && !defined(_XBOX)
     {"readlink",        win_readlink, METH_VARARGS, win_readlink__doc__},
 #endif /* !defined(HAVE_READLINK) && defined(MS_WINDOWS) */
     {"rename",          posix_rename, METH_VARARGS, posix_rename__doc__},
@@ -8050,8 +8113,10 @@ static PyMethodDef posix_methods[] = {
 #endif /* HAVE_PLOCK */
 #ifdef MS_WINDOWS
     {"startfile",       win32_startfile, METH_VARARGS, win32_startfile__doc__},
+#ifndef _XBOX
     {"kill",    win32_kill, METH_VARARGS, win32_kill__doc__},
     {"link",    win32_link, METH_VARARGS, win32_link__doc__},
+#endif
 #endif
 #ifdef HAVE_SETUID
     {"setuid",          posix_setuid, METH_VARARGS, posix_setuid__doc__},

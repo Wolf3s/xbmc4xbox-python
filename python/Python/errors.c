@@ -375,7 +375,7 @@ PyErr_SetFromErrnoWithFilenameObject(PyObject *exc, PyObject *filenameObject)
         }
         else {
 #ifdef _XBOX
-            int len 0;
+            int len = 0;
 #else
             int len = FormatMessageW(
                 FORMAT_MESSAGE_ALLOCATE_BUFFER |

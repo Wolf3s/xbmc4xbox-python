@@ -40,7 +40,9 @@ static char copyright[] =
     " SRE 2.2.2 Copyright (c) 1997-2002 by Secret Labs AB ";
 
 #define PY_SSIZE_T_CLEAN
-
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include "Python.h"
 #include "structmember.h" /* offsetof */
 

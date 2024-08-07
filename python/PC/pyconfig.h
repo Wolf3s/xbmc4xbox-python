@@ -444,8 +444,11 @@ Py_NO_ENABLE_SHARED to find out.  Also support MS_NO_COREDLL for b/w compat */
 /* Fairly standard from here! */
 
 /* Define to 1 if you have the `copysign' function. */
-#define HAVE_COPYSIGN 1
-
+#ifdef _XBOX
+#undef HAVE_COPYSIGN
+#else
+#define HAVE_COPYSIGN 1	
+#endif
 /* Define to 1 if you have the `isinf' macro. */
 #define HAVE_DECL_ISINF 1
 
