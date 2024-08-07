@@ -577,7 +577,7 @@ _PyVerify_fd_dup2(int fd1, int fd2)
 #define _PyVerify_fd_dup2(A, B) (1)
 #endif
 
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS)
 /* The following structure was copied from
    http://msdn.microsoft.com/en-us/library/ms791514.aspx as the required
    include doesn't seem to be present in the Windows SDK (at least as included
